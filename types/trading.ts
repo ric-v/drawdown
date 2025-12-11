@@ -39,6 +39,11 @@ export interface PortfolioStats {
   largestLoss: number;
   currentEquity: number;
   initialCapital: number;
+  // Advanced KPIs
+  profitFactor: number;
+  expectancy: number;
+  maxDrawdown: number;
+  currentStreak: number; // Positive for winning streak, negative for losing streak
 }
 
 // Keeping for backward compatibility

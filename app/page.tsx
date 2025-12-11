@@ -10,8 +10,38 @@ import { AddFundsForm } from '@/components/add-funds-form';
 import { FundHistory } from '@/components/fund-history';
 import { AppLayout } from '@/components/app-layout';
 import { DailyPnL, PortfolioStats, EquityPoint } from '@/types/trading';
-import { DollarSign, Activity, Target, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { DollarSign, Activity, Target, RefreshCw, CalendarIcon, MoreHorizontal, IndianRupeeIcon, Plus, Edit2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useIsMobile } from "@/hooks/use-mobile"
+import { DateRange } from "react-day-picker"
+import {
+  addDays,
+  format,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  subWeeks,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  startOfQuarter,
+  endOfQuarter,
+  subQuarters,
+  startOfYear,
+  endOfYear,
+  subYears
+} from "date-fns"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 export default function Dashboard() {
   const [dailyPnL, setDailyPnL] = useState<DailyPnL[]>([]);
@@ -29,54 +59,55 @@ export default function Dashboard() {
     largestLoss: 0,
     currentEquity: 100000,
     initialCapital: 100000,
+    profitFactor: 0,
+    expectancy: 0,
+    maxDrawdown: 0,
+    currentStreak: 0,
+  });
+  const [globalStats, setGlobalStats] = useState<PortfolioStats>({
+    totalPnL: 0,
+    totalPnLPercentage: 0,
+    winRate: 0,
+    totalDays: 0,
+    profitDays: 0,
+    lossDays: 0,
+    averageProfit: 0,
+    averageLoss: 0,
+    largestProfit: 0,
+    largestLoss: 0,
+    currentEquity: 100000,
+    initialCapital: 100000,
+    profitFactor: 0,
+    expectancy: 0,
+    maxDrawdown: 0,
+    currentStreak: 0,
   });
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [isConsolidated, setIsConsolidated] = useState(true);
   const [editingEntry, setEditingEntry] = useState<DailyPnL | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  
-  // Date range state - default to current month
-  const getDefaultDateRange = () => {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: startOfMonth, end: now };
-  };
-  
-  const [dateRange, setDateRange] = useState(getDefaultDateRange());
-  
-  // Filter data based on date range
-  const filteredEquityData = equityData.filter(point => {
-    // Parse the date string (format: "DD MMM YYYY" or ISO string)
-    const pointDate = new Date(point.date);
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
-    
-    // Set time to start of day for accurate comparison
-    pointDate.setHours(0, 0, 0, 0);
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
-    
-    return pointDate >= startDate && pointDate <= endDate;
-  });
-  
-  const filteredDailyPnL = dailyPnL.filter(entry => {
-    const entryDate = entry.date instanceof Date ? entry.date : new Date(entry.date);
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
-    
-    // Set time to start of day for accurate comparison
-    entryDate.setHours(0, 0, 0, 0);
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
-    
-    return entryDate >= startDate && entryDate <= endDate;
-  });
+  const isMobile = useIsMobile();
+
+  // Date range state
+  const [date, setDate] = useState<DateRange | undefined>(undefined)
+
+  // Filter data based on date range - NO LONGER NEEDED, server side filtering
+  const filteredEquityData = equityData;
+  const filteredDailyPnL = dailyPnL;
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/portfolio?consolidated=${isConsolidated}`);
+      let url = `/api/portfolio?consolidated=false`;
+
+      if (date?.from) {
+        url += `&from=${date.from.toISOString()}`;
+      }
+      if (date?.to) {
+        url += `&to=${date.to.toISOString()}`;
+      }
+
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setDailyPnL(data.dailyPnL.map((entry: any) => ({
@@ -84,7 +115,9 @@ export default function Dashboard() {
           date: new Date(entry.date)
         })));
         setEquityData(data.equityData);
+        setEquityData(data.equityData);
         setStats(data.stats);
+        setGlobalStats(data.globalStats);
         setLastUpdated(data.lastUpdated);
       }
     } catch (error) {
@@ -96,7 +129,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [isConsolidated]);
+  }, [date]); // Re-fetch when date changes
 
   const handleDeleteEntry = async (id: string) => {
     if (!confirm('Are you sure you want to delete this entry?')) {
@@ -107,7 +140,7 @@ export default function Dashboard() {
       const response = await fetch(`/api/portfolio/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (response.ok) {
         await fetchData();
       } else {
@@ -130,181 +163,332 @@ export default function Dashboard() {
   };
 
   return (
-    <AppLayout stats={stats}>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Page Header with Actions */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">Dashboard</h2>
-              {lastUpdated && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Last updated: {new Date(lastUpdated).toLocaleString()}
-                </p>
-              )}
+    <AppLayout stats={globalStats}>
+      <div className="flex flex-col space-y-6 p-4 md:p-8">
+        {/* Header Section with Actions */}
+        <div className="flex flex-col space-y-4 md:flex-row md:items-start md:justify-between md:space-y-0">
+          <div className="flex flex-col space-y-1">
+            <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+            <p className="text-muted-foreground">
+              Track your daily trading performance and portfolio growth.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="grid gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full md:w-[260px] justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date?.from ? (
+                      date.to ? (
+                        <>
+                          {format(date.from, "LLL dd, y")} -{" "}
+                          {format(date.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(date.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align={isMobile ? "center" : "end"}>
+                  <div className="flex flex-col md:flex-row">
+                    <div className="grid grid-cols-3 gap-1 p-2 md:flex md:flex-col md:gap-2 md:p-3 border-b md:border-b-0 md:border-r">
+                      <PresetButton
+                        label="Today"
+                        onClick={() => setDate({ from: new Date(), to: new Date() })}
+                        isSelected={false}
+                      />
+                      <PresetButton
+                        label="Yesterday"
+                        onClick={() => {
+                          const yesterday = subDays(new Date(), 1);
+                          setDate({ from: yesterday, to: yesterday });
+                        }}
+                        isSelected={false}
+                      />
+                      <PresetButton
+                        label="This Week"
+                        onClick={() => setDate({
+                          from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+                          to: new Date()
+                        })}
+                        isSelected={false}
+                      />
+                      <PresetButton
+                        label="Last Week"
+                        onClick={() => {
+                          const lastWeek = subWeeks(new Date(), 1);
+                          setDate({
+                            from: startOfWeek(lastWeek, { weekStartsOn: 1 }),
+                            to: endOfWeek(lastWeek, { weekStartsOn: 1 })
+                          });
+                        }}
+                        isSelected={false}
+                      />
+                      <PresetButton
+                        label="This Month"
+                        onClick={() => setDate({
+                          from: startOfMonth(new Date()),
+                          to: new Date()
+                        })}
+                        isSelected={false}
+                      />
+                      <PresetButton
+                        label="Last Month"
+                        onClick={() => {
+                          const lastMonth = subMonths(new Date(), 1);
+                          setDate({
+                            from: startOfMonth(lastMonth),
+                            to: endOfMonth(lastMonth)
+                          });
+                        }}
+                        isSelected={false}
+                      />
+                      <PresetButton
+                        label="All Time"
+                        onClick={() => setDate(undefined)}
+                        isSelected={!date}
+                      />
+                    </div>
+                    <div className="p-3">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={isMobile ? 1 : 2}
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            
-            <div className="flex items-center gap-2 flex-wrap">
-              <AddTransactionForm onTransactionAdded={fetchData} />
-              <AddFundsForm onFundsAdded={fetchData} />
-              <EditEquityForm currentEquity={stats.initialCapital} onEquityUpdated={fetchData} />
-              <button
+
+            <div className="grid grid-cols-4 gap-2 md:flex md:flex-row md:items-center">
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={fetchData}
-                disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-sm"
+                title="Refresh Data"
+                className="h-10 w-full md:w-10"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                <span className="text-sm font-medium hidden sm:inline">Refresh</span>
-              </button>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+
+              <AddTransactionForm
+                onTransactionAdded={fetchData}
+                trigger={
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white w-full px-2 md:w-auto">
+                    <Plus className="w-4 h-4 md:mr-2" />
+                    <span className="hidden md:inline">Add P&L</span>
+                    <span className="md:hidden">P&L</span>
+                  </Button>
+                }
+              />
+
+              <AddFundsForm
+                onFundsAdded={fetchData}
+                trigger={
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full px-2 md:w-auto">
+                    <Plus className="w-4 h-4 md:mr-2" />
+                    <span className="hidden md:inline">Funds</span>
+                    <span className="md:hidden">Funds</span>
+                  </Button>
+                }
+              />
+
+              <EditEquityForm
+                currentEquity={stats.initialCapital}
+                onEquityUpdated={fetchData}
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Edit Initial Capital"
+                    className="h-10 w-full md:w-10 md:border-0 md:bg-transparent md:hover:bg-accent"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                }
+              />
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">Loading portfolio data...</p>
-            </div>
-          </div>
-        ) : (
-          <>
         {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
           <KPICard
-            title="Total P&L"
+            title="Total PnL"
             value={stats.totalPnL}
-            subtitle={`${stats.totalPnLPercentage.toFixed(2)}% Return`}
-            trend={stats.totalPnL > 0 ? 'up' : stats.totalPnL < 0 ? 'down' : 'neutral'}
             isCurrency
-            numericValue={stats.totalPnL}
+            trend={stats.totalPnL >= 0 ? 'up' : 'down'}
+            subtitle={`${stats.totalPnLPercentage >= 0 ? '+' : ''}${stats.totalPnLPercentage.toFixed(2)}% Return`}
+          />
+          <KPICard
+            title="Net Worth"
+            value={globalStats.currentEquity}
+            isCurrency
+            trend="neutral"
+            subtitle="Current Equity"
+          />
+          <KPICard
+            title="Profit Factor"
+            value={stats.profitFactor ? stats.profitFactor.toFixed(2) : 'Inf'}
+            trend={!stats.profitFactor || stats.profitFactor > 1.5 ? 'up' : stats.profitFactor < 1 ? 'down' : 'neutral'}
+            subtitle={!stats.profitFactor || stats.profitFactor > 2 ? 'Excellent' : stats.profitFactor > 1.2 ? 'Good' : 'Needs Improvement'}
+          />
+          <KPICard
+            title="Max Drawdown"
+            value={`${stats.maxDrawdown.toFixed(2)}%`}
+            trend="down"
+            subtitle="Peak to Valley"
           />
           <KPICard
             title="Win Rate"
-            value={`${stats.winRate.toFixed(1)}%`}
-            subtitle={`${stats.profitDays}P / ${stats.lossDays}L Days`}
-            trend={stats.winRate >= 50 ? 'up' : 'down'}
+            value={stats.winRate}
+            isPercentage
+            trend={stats.winRate > 50 ? 'up' : 'down'}
+            subtitle={`${stats.profitDays}W - ${stats.lossDays}L (${stats.totalDays} Days)`}
           />
           <KPICard
-            title="Average Profit"
-            value={stats.averageProfit}
-            subtitle={`Avg Loss: ${stats.averageLoss < 0 ? '-' : ''}₹${Math.abs(stats.averageLoss).toFixed(2)}`}
-            trend="up"
+            title="Expectancy"
+            value={stats.expectancy}
             isCurrency
-            numericValue={stats.averageProfit}
+            trend={stats.expectancy > 0 ? 'up' : 'down'}
+            subtitle="Avg per Trade"
           />
           <KPICard
-            title="Total Days"
-            value={stats.totalDays}
-            subtitle={`Best Day: ${stats.largestProfit > 0 ? '+' : ''}₹${stats.largestProfit.toFixed(2)}`}
-            trend="neutral"
+            title="Streak"
+            value={Math.abs(stats.currentStreak)}
+            trend={stats.currentStreak > 0 ? 'up' : 'down'}
+            subtitle={stats.currentStreak > 0 ? 'Consecutive Wins' : 'Consecutive Losses'}
+          />
+          <KPICard
+            title="Avg Profit"
+            value={stats.averageProfit}
+            isCurrency
+            trend="up"
+            subtitle="Per Winning Day"
           />
         </div>
 
-        {/* Charts and Tables Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <EquityChart 
-            data={filteredEquityData} 
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-          />
-          
-          {/* Additional Stats and Fund History */}
-          <div className="space-y-4 sm:space-y-6">
-            {/* Performance Metrics Card */}
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-black border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-6 shadow-lg">
-              <h3 className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-4 sm:mb-6">
-                Performance Metrics
-              </h3>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
-                      <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        {/* Charts and Stats Area */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="col-span-3 lg:col-span-2 flex flex-col gap-6">
+            <EquityChart
+              className="w-full h-full"
+              data={filteredEquityData}
+              allData={dailyPnL}
+              dateRange={date && date.from && date.to ? { start: date.from, end: date.to } : { start: new Date(0), end: new Date() }}
+              onDateRangeChange={() => { }}
+            />
+          </div>
+
+          <div className="col-span-3 lg:col-span-1 flex flex-col gap-6">
+            <Card className="flex-1 shadow-sm border-0">
+              <CardHeader>
+                <CardTitle>Performance Metrics</CardTitle>
+                <CardDescription>Detailed breakdown</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <IndianRupeeIcon className="h-4 w-4 text-emerald-500" />
+                      </div>
+                      <span className="text-sm font-medium">Largest Profit</span>
                     </div>
-                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Largest Profit</span>
+                    <span className="font-bold text-emerald-500">
+                      {stats.largestProfit > 0 ? '+' : ''}{stats.largestProfit.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    +₹{stats.largestProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-950 flex items-center justify-center">
-                      <DollarSign className="w-4 h-4 text-red-600 dark:text-red-400" />
+
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                        <IndianRupeeIcon className="h-4 w-4 text-red-500" />
+                      </div>
+                      <span className="text-sm font-medium">Largest Loss</span>
                     </div>
-                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Largest Loss</span>
+                    <span className="font-bold text-red-500">
+                      {stats.largestLoss.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-red-600 dark:text-red-400">
-                    ₹{stats.largestLoss.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-                      <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                        <Activity className="h-4 w-4 text-red-500" />
+                      </div>
+                      <span className="text-sm font-medium">Avg Loss</span>
                     </div>
-                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Profit Days</span>
+                    <span className="font-bold text-red-500">
+                      {Math.abs(stats.averageLoss).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
-                    {stats.profitDays}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
-                      <Activity className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Target className="h-4 w-4 text-blue-500" />
+                      </div>
+                      <span className="text-sm font-medium">Total Trades</span>
                     </div>
-                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Loss Days</span>
+                    <span className="font-bold">
+                      {stats.totalDays}
+                    </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
-                    {stats.lossDays}
-                  </span>
                 </div>
-                
-                <div className="flex items-center justify-between p-2 pt-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border-t border-gray-200 dark:border-gray-800">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
-                      <Target className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Initial Capital</span>
-                  </div>
-                  <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
-                    ₹{stats.initialCapital.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Fund History */}
-            <FundHistory key={lastUpdated} />
+              </CardContent>
+            </Card>
+            <FundHistory onFundUpdate={fetchData} dateRange={date} />
           </div>
         </div>
 
-        {/* Daily P&L History */}
-        <TransactionTable 
-          transactions={filteredDailyPnL} 
-          isConsolidated={isConsolidated}
-          onToggleConsolidation={() => setIsConsolidated(!isConsolidated)}
+        {/* Transaction Table */}
+        <TransactionTable
+          transactions={filteredDailyPnL}
+          isConsolidated={false}
           onDelete={handleDeleteEntry}
           onEdit={handleEditEntry}
         />
 
-        {/* Edit Transaction Modal */}
-        <EditTransactionForm
-          entry={editingEntry}
-          isOpen={isEditModalOpen}
-          onClose={handleCloseEditModal}
-          onSuccess={fetchData}
-        />
-
-        </>
+        {editingEntry && (
+          <EditTransactionForm
+            isOpen={isEditModalOpen}
+            onClose={handleCloseEditModal}
+            onEntryUpdated={fetchData}
+            entry={editingEntry}
+          />
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function PresetButton({ label, onClick, isSelected }: { label: string, onClick: () => void, isSelected: boolean }) {
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        "justify-center md:justify-start font-normal h-auto py-1.5 px-2 text-xs md:text-sm",
+        isSelected && "bg-accent text-accent-foreground"
+      )}
+      onClick={onClick}
+    >
+      {label}
+    </Button>
   );
 }

@@ -11,7 +11,7 @@ async function getFundTransactions(): Promise<FundTransaction[]> {
       parameters: [{ name: "@type", value: "fundTransaction" }]
     })
     .fetchAll();
-  
+
   return resources.map(item => ({
     id: item.id,
     amount: item.amount,
@@ -29,7 +29,7 @@ async function getInitialCapital(): Promise<number> {
       parameters: [{ name: "@type", value: "config" }]
     })
     .fetchAll();
-  
+
   return resources.length > 0 ? resources[0].initialCapital : 100000;
 }
 
@@ -44,10 +44,31 @@ async function updateInitialCapital(newCapital: number): Promise<void> {
 }
 
 // GET: Retrieve all fund transactions
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const fundTransactions = await getFundTransactions();
-    
+    const { searchParams } = new URL(request.url);
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+
+    let fundTransactions = await getFundTransactions();
+
+    if (fromParam) {
+      const fromDate = new Date(fromParam);
+      fromDate.setHours(0, 0, 0, 0);
+
+      fundTransactions = fundTransactions.filter(t => {
+        const tDate = new Date(t.date);
+        tDate.setHours(0, 0, 0, 0);
+
+        if (toParam) {
+          const toDate = new Date(toParam);
+          toDate.setHours(23, 59, 59, 999);
+          return tDate >= fromDate && tDate <= toDate;
+        }
+        return tDate >= fromDate;
+      });
+    }
+
     return NextResponse.json({
       fundTransactions,
     });
@@ -62,13 +83,13 @@ export async function POST(request: Request) {
   try {
     const newTransaction: Omit<FundTransaction, 'id'> = await request.json();
     const container = await getCosmosContainer();
-    
+
     const transaction: FundTransaction = {
       id: `fund-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       ...newTransaction,
       date: new Date(newTransaction.date),
     };
-    
+
     // Save fund transaction to Cosmos DB
     await container.items.upsert({
       id: transaction.id,
@@ -78,19 +99,19 @@ export async function POST(request: Request) {
       date: transaction.date.toISOString(),
       notes: transaction.notes,
     });
-    
+
     // Update initial capital based on transaction type
     const currentCapital = await getInitialCapital();
     let newCapital = currentCapital;
-    
+
     if (transaction.type === 'DEPOSIT') {
       newCapital = currentCapital + transaction.amount;
     } else if (transaction.type === 'WITHDRAWAL') {
       newCapital = currentCapital - transaction.amount;
     }
-    
+
     await updateInitialCapital(newCapital);
-    
+
     return NextResponse.json({
       transaction,
       newInitialCapital: newCapital,
@@ -108,41 +129,41 @@ export async function DELETE(request: Request) {
     const container = await getCosmosContainer();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    
+
     // If ID is provided, delete specific transaction
     if (id) {
       // Get the transaction to reverse the capital adjustment
       const fundTransactions = await getFundTransactions();
       const transaction = fundTransactions.find(t => t.id === id);
-      
+
       if (!transaction) {
         return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
       }
-      
+
       // Reverse the capital adjustment
       const currentCapital = await getInitialCapital();
       let newCapital = currentCapital;
-      
+
       if (transaction.type === 'DEPOSIT') {
         newCapital = currentCapital - transaction.amount;
       } else if (transaction.type === 'WITHDRAWAL') {
         newCapital = currentCapital + transaction.amount;
       }
-      
+
       await updateInitialCapital(newCapital);
-      
+
       // Delete the transaction
       await container.item(id, 'fundTransaction').delete();
-      
+
       return NextResponse.json({
         message: 'Fund transaction deleted successfully',
         newInitialCapital: newCapital,
       });
     }
-    
+
     // Otherwise, delete all fund transactions
     const fundTransactions = await getFundTransactions();
-    
+
     // Reverse all fund transactions by adjusting initial capital
     let capitalAdjustment = 0;
     fundTransactions.forEach(transaction => {
@@ -152,16 +173,16 @@ export async function DELETE(request: Request) {
         capitalAdjustment += transaction.amount;
       }
     });
-    
+
     // Update initial capital
     const currentCapital = await getInitialCapital();
     await updateInitialCapital(currentCapital + capitalAdjustment);
-    
+
     // Delete all fund transaction documents
     for (const transaction of fundTransactions) {
       await container.item(transaction.id, 'fundTransaction').delete();
     }
-    
+
     return NextResponse.json({
       message: 'All fund transactions cleared successfully',
       newInitialCapital: currentCapital + capitalAdjustment,

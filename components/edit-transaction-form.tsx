@@ -2,17 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { DailyPnL } from '@/types/trading';
-import { X } from 'lucide-react';
-import { createPortal } from 'react-dom';
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface EditTransactionFormProps {
   entry: DailyPnL | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onEntryUpdated: () => void;
 }
 
-export function EditTransactionForm({ entry, isOpen, onClose, onSuccess }: EditTransactionFormProps) {
+export function EditTransactionForm({ entry, isOpen, onClose, onEntryUpdated }: EditTransactionFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     date: '',
@@ -59,7 +69,7 @@ export function EditTransactionForm({ entry, isOpen, onClose, onSuccess }: EditT
       });
 
       if (response.ok) {
-        onSuccess();
+        onEntryUpdated();
         onClose();
       } else {
         alert('Failed to update entry');
@@ -72,87 +82,73 @@ export function EditTransactionForm({ entry, isOpen, onClose, onSuccess }: EditT
     }
   };
 
-  const modalContent = isOpen && entry ? (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-800 rounded-xl shadow-2xl p-8 max-w-md w-full mx-auto relative z-[101]">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Edit P&L Entry</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">
+  return (
+    <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit P&L Entry</DialogTitle>
+          <DialogDescription>
+            Make changes to your daily P&L entry here. Click save when you're done.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="date" className="text-right">
               Date
-            </label>
-            <input
-              type="date"
+            </Label>
+            <Input
+              id="date"
               name="date"
+              type="date"
               value={formData.date}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="col-span-3"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">
-              Profit/Loss Amount (₹)
-            </label>
-            <input
-              type="number"
-              name="pnl"
-              value={formData.pnl}
-              onChange={handleChange}
-              placeholder="Enter profit (+2400) or loss (-8000)"
-              required
-              step="0.01"
-              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all placeholder:text-gray-500"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-              Positive for profit, negative for loss
-            </p>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="pnl" className="text-right pt-2.5">
+              Amount
+            </Label>
+            <div className="col-span-3 space-y-2">
+              <Input
+                id="pnl"
+                name="pnl"
+                type="number"
+                step="0.01"
+                placeholder="Enter profit or loss"
+                value={formData.pnl}
+                onChange={handleChange}
+                required
+              />
+              <p className="text-[0.8rem] text-muted-foreground">
+                Positive for profit, negative for loss
+              </p>
+            </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">
-              Notes (Optional)
-            </label>
-            <textarea
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="notes" className="text-right pt-2.5">
+              Notes
+            </Label>
+            <Textarea
+              id="notes"
               name="notes"
+              placeholder="Any notes about the day..."
               value={formData.notes}
               onChange={handleChange}
-              placeholder="Add any notes about the day..."
-              rows={3}
-              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none transition-all placeholder:text-gray-500"
+              className="col-span-3"
             />
           </div>
-
-          <div className="flex space-x-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-all font-medium"
-            >
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all disabled:opacity-50 font-medium"
-            >
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
               {loading ? 'Updating...' : 'Update P&L'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
-  ) : null;
-
-  return typeof window !== 'undefined' && modalContent ? createPortal(modalContent, document.body) : null;
+      </DialogContent>
+    </Dialog>
+  );
 }

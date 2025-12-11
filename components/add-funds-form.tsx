@@ -1,14 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, X, TrendingUp, TrendingDown } from 'lucide-react';
-import { createPortal } from 'react-dom';
+import { Plus } from 'lucide-react';
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface AddFundsFormProps {
   onFundsAdded: () => void;
+  trigger?: React.ReactNode;
 }
 
-export function AddFundsForm({ onFundsAdded }: AddFundsFormProps) {
+export function AddFundsForm({ onFundsAdded, trigger }: AddFundsFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,10 +38,17 @@ export function AddFundsForm({ onFundsAdded }: AddFundsFormProps) {
     notes: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleTypeChange = (value: string) => {
+    setFormData({
+      ...formData,
+      type: value as 'DEPOSIT' | 'WITHDRAWAL',
     });
   };
 
@@ -63,115 +90,98 @@ export function AddFundsForm({ onFundsAdded }: AddFundsFormProps) {
     }
   };
 
-  const modalContent = isOpen ? (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-800 rounded-xl shadow-2xl p-8 max-w-md w-full mx-auto relative z-[101]">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">Add/Withdraw Funds</h2>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {trigger ? trigger : (
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Plus className="w-4 h-4 mr-2" />
+            Funds
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add/Withdraw Funds</DialogTitle>
+          <DialogDescription>
+            Record a deposit or withdrawal from your trading account.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="date" className="text-right">
               Date
-            </label>
-            <input
-              type="date"
+            </Label>
+            <Input
+              id="date"
               name="date"
+              type="date"
               value={formData.date}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="col-span-3"
             />
           </div>
-
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">
-              Transaction Type
-            </label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-            >
-              <option value="DEPOSIT">Add Funds (Deposit)</option>
-              <option value="WITHDRAWAL">Withdraw Funds</option>
-            </select>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="type" className="text-right">
+              Type
+            </Label>
+            <div className="col-span-3">
+              <Select value={formData.type} onValueChange={handleTypeChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DEPOSIT">Add Funds (Deposit)</SelectItem>
+                  <SelectItem value="WITHDRAWAL">Withdraw Funds</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">
-              Amount (₹)
-            </label>
-            <input
-              type="number"
-              name="amount"
-              value={formData.amount}
-              onChange={handleChange}
-              placeholder="Enter amount"
-              required
-              step="0.01"
-              min="0"
-              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all placeholder:text-gray-500"
-            />
-            <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-500 mt-2">
-              Amount will be {formData.type === 'DEPOSIT' ? 'added to' : 'deducted from'} your total capital
-            </p>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="amount" className="text-right pt-2.5">
+              Amount
+            </Label>
+            <div className="col-span-3 space-y-2">
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Enter amount"
+                value={formData.amount}
+                onChange={handleChange}
+                required
+              />
+              <p className="text-[0.8rem] text-muted-foreground">
+                Amount will be {formData.type === 'DEPOSIT' ? 'added to' : 'deducted from'} your total capital
+              </p>
+            </div>
           </div>
-
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">
-              Notes (Optional)
-            </label>
-            <textarea
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="notes" className="text-right pt-2.5">
+              Notes
+            </Label>
+            <Textarea
+              id="notes"
               name="notes"
+              placeholder="Any notes about this transaction..."
               value={formData.notes}
               onChange={handleChange}
-              placeholder="Add any notes about this transaction..."
-              rows={3}
-              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none transition-all placeholder:text-gray-500"
+              className="col-span-3"
             />
           </div>
-
-          <div className="flex space-x-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-all font-medium"
-            >
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all disabled:opacity-50 font-medium"
-            >
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
               {loading ? 'Processing...' : formData.type === 'DEPOSIT' ? 'Add Funds' : 'Withdraw'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
-  ) : null;
-
-  return (
-    <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
-        title="Add or withdraw funds"
-      >
-        <Plus className="w-4 h-4" />
-        <span>Funds</span>
-      </button>
-      {typeof window !== 'undefined' && modalContent && createPortal(modalContent, document.body)}
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

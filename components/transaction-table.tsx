@@ -2,13 +2,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DailyPnL } from '@/types/trading';
 import { cn, getColorClass } from '@/lib/utils';
 import { format } from 'date-fns';
-import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Trash2, Layers } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, Edit2, Trash2, Layers } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface TransactionTableProps {
   transactions: DailyPnL[];
-  isConsolidated?: boolean;
-  onToggleConsolidation?: () => void;
+  isConsolidated?: boolean; // Kept for types but ignored
   onDelete?: (id: string) => void;
   onEdit?: (entry: DailyPnL) => void;
 }
@@ -16,7 +33,7 @@ interface TransactionTableProps {
 type SortField = 'date' | 'pnl';
 type SortOrder = 'asc' | 'desc';
 
-export function TransactionTable({ transactions, isConsolidated = true, onToggleConsolidation, onDelete, onEdit }: TransactionTableProps) {
+export function TransactionTable({ transactions, onDelete, onEdit }: TransactionTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState<SortField>('date');
@@ -58,224 +75,206 @@ export function TransactionTable({ transactions, isConsolidated = true, onToggle
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50" />;
-    return sortOrder === 'asc' ? 
-      <ArrowUp className="w-4 h-4 ml-1" /> : 
-      <ArrowDown className="w-4 h-4 ml-1" />;
+    if (sortField !== field) return <ArrowUpDown className="ml-2 h-3.5 w-3.5 opacity-50" />;
+    return sortOrder === 'asc' ?
+      <ArrowUp className="ml-2 h-3.5 w-3.5" /> :
+      <ArrowDown className="ml-2 h-3.5 w-3.5" />;
   };
 
   return (
-    <Card className="col-span-3">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Daily P&L History</CardTitle>
+    <Card className="col-span-3 border-none shadow-md">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="text-xl font-bold">Daily P&L History</CardTitle>
         {transactions.length > 0 && (
           <div className="flex items-center gap-3">
-            {onToggleConsolidation && (
-              <button
-                onClick={onToggleConsolidation}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs md:text-sm transition-colors border",
-                  isConsolidated
-                    ? "bg-emerald-600/10 text-emerald-500 border-emerald-600/20 hover:bg-emerald-600/20"
-                    : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700"
-                )}
-              >
-                <Layers className="w-4 h-4" />
-                {isConsolidated ? 'Show All Entries' : 'Consolidate by Date'}
-              </button>
-            )}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Show</span>
+              <span className="text-sm font-medium text-muted-foreground">Rows</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-sm text-gray-900 dark:text-gray-100"
+                className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>
-                <option value={25}>25</option>
+                <option value={20}>20</option>
                 <option value={50}>50</option>
               </select>
-              <span className="text-xs md:text-sm text-gray-600 dark:text-gray-400">entries</span>
             </div>
           </div>
         )}
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800">
-                <th 
-                  className="text-left py-3 px-4 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-                  onClick={() => handleSort('date')}
-                >
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead onClick={() => handleSort('date')} className="cursor-pointer hover:bg-muted/50 w-[150px]">
                   <div className="flex items-center">
                     Date
                     <SortIcon field="date" />
                   </div>
-                </th>
-                <th className="text-left py-3 px-4 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                <th 
-                  className="text-right py-3 px-4 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-                  onClick={() => handleSort('pnl')}
-                >
+                </TableHead>
+                <TableHead className="w-[120px] hidden md:table-cell">Status</TableHead>
+                <TableHead onClick={() => handleSort('pnl')} className="cursor-pointer hover:bg-muted/50 text-right">
                   <div className="flex items-center justify-end">
                     P&L Amount
                     <SortIcon field="pnl" />
                   </div>
-                </th>
-                <th className="text-left py-3 px-4 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Notes</th>
-                {!isConsolidated && (onEdit || onDelete) && (
-                  <th className="text-center py-3 px-4 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                </TableHead>
+                <TableHead className='hidden md:table-cell'>Notes</TableHead>
+                {(onEdit || onDelete) && (
+                  <TableHead className="w-[50px]"></TableHead>
                 )}
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={!isConsolidated && (onEdit || onDelete) ? 5 : 4} className="py-8 text-center text-gray-500 dark:text-gray-500">
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentTransactions.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={(onEdit || onDelete) ? 5 : 4}
+                    className="h-24 text-center text-muted-foreground"
+                  >
                     No data yet. Add your first daily P&L entry!
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 currentTransactions.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    className="border-b border-gray-200/50 dark:border-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-800/30 transition-colors"
-                  >
-                    <td className="py-3 px-4 text-xs md:text-sm text-gray-700 dark:text-gray-300">
+                  <TableRow key={entry.id}>
+                    <TableCell className="font-medium">
                       {format(new Date(entry.date), 'MMM dd, yyyy')}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={cn(
-                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                          entry.pnl >= 0
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-red-500/10 text-red-400'
-                        )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge
+                        variant={entry.pnl >= 0 ? "success" : "danger"}
+                        className="rounded-full"
                       >
                         {entry.pnl >= 0 ? (
-                          <TrendingUp className="w-3 h-3 mr-1" />
+                          <TrendingUp className="mr-1 h-3 w-3" />
                         ) : (
-                          <TrendingDown className="w-3 h-3 mr-1" />
+                          <TrendingDown className="mr-1 h-3 w-3" />
                         )}
                         {entry.pnl >= 0 ? 'PROFIT' : 'LOSS'}
-                      </span>
-                    </td>
-                    <td className={cn(
-                      'py-3 px-4 text-xs md:text-sm text-right font-semibold',
-                      getColorClass(entry.pnl)
-                    )}>
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={cn("text-right font-medium", getColorClass(entry.pnl))}>
                       {entry.pnl >= 0 ? '+' : '-'}{formatINR(entry.pnl)}
-                    </td>
-                    <td className="py-3 px-4 text-xs md:text-sm text-gray-600 dark:text-gray-400">
+                    </TableCell>
+                    <TableCell className="max-w-[300px] truncate text-muted-foreground hidden md:table-cell">
                       {entry.notes || '-'}
-                    </td>
-                    {!isConsolidated && (onEdit || onDelete) && (
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-center gap-2">
-                          {onEdit && (
-                            <button
-                              onClick={() => onEdit(entry)}
-                              className="p-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 border border-blue-600/20 transition-colors"
-                              title="Edit entry"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-                          {onDelete && (
-                            <button
-                              onClick={() => onDelete(entry.id)}
-                              className="p-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-500 border border-red-600/20 transition-colors"
-                              title="Delete entry"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                    </TableCell>
+                    {(onEdit || onDelete) && (
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            {onEdit && (
+                              <DropdownMenuItem onClick={() => onEdit(entry)}>
+                                <Edit2 className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {onDelete && (
+                              <DropdownMenuItem
+                                onClick={() => onDelete(entry.id)}
+                                className="text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-950"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Pagination */}
         {transactions.length > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {startIndex + 1} to {Math.min(endIndex, transactions.length)} of {transactions.length} entries
+          <div className="flex items-center justify-between pt-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {startIndex + 1}-{Math.min(endIndex, transactions.length)} of {transactions.length}
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => goToPage(1)}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="First page"
+                className="h-8 w-8"
               >
-                <ChevronsLeft className="w-4 h-4" />
-              </button>
-              <button
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Previous page"
+                className="h-8 w-8"
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <div className="flex items-center gap-1">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center gap-1.5 mx-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(page => {
-                    if (totalPages <= 7) return true;
+                    if (totalPages <= 5) return true;
                     if (page === 1 || page === totalPages) return true;
                     if (page >= currentPage - 1 && page <= currentPage + 1) return true;
                     return false;
                   })
                   .map((page, index, array) => (
-                    <>
+                    <div key={page} className="flex items-center">
                       {index > 0 && array[index - 1] !== page - 1 && (
-                        <span className="px-2 text-gray-500 dark:text-gray-500">...</span>
+                        <span className="text-muted-foreground text-xs px-1">...</span>
                       )}
-                      <button
-                        key={page}
+                      <Button
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
                         onClick={() => goToPage(page)}
                         className={cn(
-                          'px-3 py-1 rounded-lg transition-colors',
-                          currentPage === page
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                          "h-8 w-8 p-0 text-xs",
+                          currentPage !== page && "text-muted-foreground"
                         )}
                       >
                         {page}
-                      </button>
-                    </>
+                      </Button>
+                    </div>
                   ))}
               </div>
 
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Next page"
+                className="h-8 w-8"
               >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              <button
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => goToPage(totalPages)}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Last page"
+                className="h-8 w-8"
               >
-                <ChevronsRight className="w-4 h-4" />
-              </button>
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         )}
@@ -283,3 +282,4 @@ export function TransactionTable({ transactions, isConsolidated = true, onToggle
     </Card>
   );
 }
+

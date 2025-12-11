@@ -2,27 +2,31 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EquityPoint } from '@/types/trading';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
   ReferenceLine,
   Cell,
 } from 'recharts';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Calendar } from 'lucide-react';
+import { TrendingUp, BarChart3, Calendar, Activity } from 'lucide-react';
+import { PnLCalendar } from './pnl-calendar';
+import { DailyPnL } from '@/types/trading';
 
 interface EquityChartProps {
   data: EquityPoint[];
+  allData?: DailyPnL[];
   dateRange: { start: Date; end: Date };
   onDateRangeChange: (range: { start: Date; end: Date }) => void;
+  className?: string;
 }
 
 const EquityTooltip = ({ active, payload }: any) => {
@@ -61,235 +65,178 @@ const PnLTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-export function EquityChart({ data, dateRange, onDateRangeChange }: EquityChartProps) {
-  const [chartType, setChartType] = useState<'equity' | 'pnl'>('equity');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const formatDateForInput = (date: Date) => {
-    return date.toISOString().split('T')[0];
-  };
-
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newStart = new Date(e.target.value);
-    onDateRangeChange({ ...dateRange, start: newStart });
-  };
-
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEnd = new Date(e.target.value);
-    onDateRangeChange({ ...dateRange, end: newEnd });
-  };
-
-  const presets = [
-    { label: 'This Month', getValue: () => {
-      const now = new Date();
-      return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: now };
-    }},
-    { label: 'Last Month', getValue: () => {
-      const now = new Date();
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      return { start: lastMonth, end: lastDayOfLastMonth };
-    }},
-    { label: 'Last 7 Days', getValue: () => {
-      const now = new Date();
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      return { start: sevenDaysAgo, end: now };
-    }},
-    { label: 'Last 30 Days', getValue: () => {
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      return { start: thirtyDaysAgo, end: now };
-    }},
-    { label: 'All Time', getValue: () => {
-      return { start: new Date(2000, 0, 1), end: new Date() };
-    }},
-  ];
+export function EquityChart({ data, allData, dateRange, onDateRangeChange, className }: EquityChartProps) {
+  const [chartType, setChartType] = useState<'equity' | 'pnl' | 'activity'>('equity');
 
   return (
-    <Card className="lg:col-span-2 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-black border-gray-200 dark:border-gray-800 shadow-lg">
+    <Card className={cn("lg:col-span-2 shadow-sm border-0 bg-white dark:bg-card min-w-0 overflow-hidden", className)}>
       <CardHeader className="flex flex-col gap-4 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <CardTitle className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+          <CardTitle className="text-lg sm:text-xl font-bold tracking-tight">
             {chartType === 'equity' ? 'Equity Curve' : 'Daily P&L'}
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex p-1 bg-muted rounded-lg w-fit">
             <button
               onClick={() => setChartType('equity')}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 shadow-sm ${
-                chartType === 'equity'
-                  ? 'bg-emerald-500 text-white shadow-emerald-500/30 shadow-lg'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${chartType === 'equity'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                }`}
             >
               <TrendingUp className="w-4 h-4" />
-              <span className="text-xs sm:text-sm font-medium">Equity</span>
+              <span>Equity</span>
             </button>
             <button
               onClick={() => setChartType('pnl')}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 shadow-sm ${
-                chartType === 'pnl'
-                  ? 'bg-emerald-500 text-white shadow-emerald-500/30 shadow-lg'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${chartType === 'pnl'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                }`}
             >
               <BarChart3 className="w-4 h-4" />
-              <span className="text-xs sm:text-sm font-medium">P&L</span>
+              <span>P&L</span>
+            </button>
+            <button
+              onClick={() => setChartType('activity')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${chartType === 'activity'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>Activity</span>
             </button>
           </div>
         </div>
-        
-        {/* Date Range Section */}
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={() => setShowDatePicker(!showDatePicker)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition-all duration-200 shadow-sm w-fit"
-          >
-            <Calendar className="w-4 h-4" />
-            <span className="text-xs sm:text-sm font-medium">
-              {formatDateForInput(dateRange.start)} to {formatDateForInput(dateRange.end)}
-            </span>
-          </button>
-          
-          {showDatePicker && (
-            <div className="flex flex-col gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-              {/* Quick Presets */}
-              <div className="flex flex-wrap gap-2">
-                {presets.map((preset) => (
-                  <button
-                    key={preset.label}
-                    onClick={() => {
-                      onDateRangeChange(preset.getValue());
-                      setShowDatePicker(false);
-                    }}
-                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-gray-200 dark:border-gray-700 rounded-lg transition-all duration-200"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-              
-              {/* Custom Date Inputs */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formatDateForInput(dateRange.start)}
-                    onChange={handleStartDateChange}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formatDateForInput(dateRange.end)}
-                    onChange={handleEndDateChange}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-1 sm:px-6 pb-6">
         {data.length === 0 ? (
-          <div className="h-[300px] sm:h-[350px] lg:h-[400px] w-full flex items-center justify-center">
-            <div className="text-center text-gray-500 dark:text-gray-400">
-              <p className="text-sm">No data available for the selected date range</p>
-              <p className="text-xs mt-2">Try selecting a different date range</p>
+          <div className="h-[300px] sm:h-[350px] lg:h-[400px] w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-muted rounded-xl bg-muted/20">
+            <div className="p-3 bg-muted rounded-full">
+              <BarChart3 className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">No data available</p>
+              <p className="text-xs text-muted-foreground mt-1">Try selecting a different date range</p>
             </div>
           </div>
         ) : (
           <div className="h-[300px] sm:h-[350px] lg:h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-            {chartType === 'equity' ? (
-              <AreaChart
-                data={data}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  stroke="#374151" 
-                  vertical={false}
+            {chartType === 'activity' ? (
+              <div className="h-full w-full pt-4 max-w-full overflow-hidden flex flex-col">
+                <PnLCalendar
+                  data={allData || data.map(d => ({
+                    id: '', // Not needed for display
+                    date: new Date(d.date),
+                    pnl: d.pnl,
+                    notes: ''
+                  }))}
+                  className="no-card border-0 shadow-none h-full w-full"
                 />
-                <XAxis 
-                  dataKey="displayDate" 
-                  stroke="#6b7280"
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  tickLine={{ stroke: '#374151' }}
-                />
-                <YAxis 
-                  stroke="#6b7280"
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  tickLine={{ stroke: '#374151' }}
-                  tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
-                />
-                <Tooltip content={<EquityTooltip />} cursor={{ stroke: '#10b981', strokeWidth: 2, strokeDasharray: '5 5' }} />
-                <Area
-                  type="monotone"
-                  dataKey="equity"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorEquity)"
-                />
-              </AreaChart>
+              </div>
             ) : (
-              <BarChart
-                data={data}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.4}/>
-                  </linearGradient>
-                  <linearGradient id="colorLoss" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.4}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  stroke="#374151" 
-                  vertical={false}
-                />
-                <XAxis 
-                  dataKey="displayDate" 
-                  stroke="#6b7280"
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  tickLine={{ stroke: '#374151' }}
-                />
-                <YAxis 
-                  stroke="#6b7280"
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  tickLine={{ stroke: '#374151' }}
-                  tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
-                />
-                <Tooltip content={<PnLTooltip />} cursor={{ fill: 'rgba(55, 65, 81, 0.5)' }} />
-                <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="3 3" />
-                <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
-                  {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? 'url(#colorProfit)' : 'url(#colorLoss)'} />
-                  ))}
-                </Bar>
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                {chartType === 'equity' ? (
+                  <AreaChart
+                    data={data}
+                    margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.01} />
+                      </linearGradient>
+                      {/* Glow filter */}
+                      <filter id="glow" height="200%" width="200%" x="-50%" y="-50%">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                        <feMerge>
+                          <feMergeNode in="coloredBlur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="4 4"
+                      stroke="hsl(var(--muted-foreground))"
+                      strokeOpacity={0.1}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="displayDate"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      dy={10}
+                      minTickGap={30}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip content={<EquityTooltip />} cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                    <Area
+                      type="monotone"
+                      dataKey="equity"
+                      stroke="#10b981"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#colorEquity)"
+                      filter="url(#glow)"
+                      animationDuration={1500}
+                    />
+                  </AreaChart>
+                ) : (
+                  <BarChart
+                    data={data}
+                    margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#15803d" stopOpacity={1} />
+                      </linearGradient>
+                      <linearGradient id="lossGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#b91c1c" stopOpacity={1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="4 4"
+                      stroke="hsl(var(--muted-foreground))"
+                      strokeOpacity={0.1}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="displayDate"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      dy={10}
+                      minTickGap={30}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip content={<PnLTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.3} />
+                    <Bar dataKey="pnl" radius={[4, 4, 4, 4]} maxBarSize={50}>
+                      {data.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.pnl >= 0 ? "url(#profitGradient)" : "url(#lossGradient)"}
+                          className="transition-all duration-300 hover:opacity-80"
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
             )}
-          </ResponsiveContainer>
           </div>
         )}
       </CardContent>
