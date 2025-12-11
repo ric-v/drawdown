@@ -47,7 +47,67 @@ A professional Trading Profit & Loss (PnL) tracker built with Next.js, TypeScrip
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
+- npm or yarn
+- Vercel account (for deployment)
+
+## Quick Start
+
+### Local Development
+
+1. Clone and install:
+```bash
+git clone <your-repo-url>
+cd daily-portfolio-tracker
+npm install
+```
+
+2. Run development server:
+```bash
+npm run dev
+```
+
+3. Open [http://localhost:3000](http://localhost:3000)
+
+### Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ric-v/daily-portfolio-tracker)
+
+Or manually:
+```bash
+npm install -g vercel
+vercel login
+vercel --prod
+```
+
+📖 **See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions and database setup.**
+
+## Features
+
+### 🎯 New Features Added
+- **Add Transactions**: Interactive form to add new trades
+- **Clear Data**: Button to reset all transactions
+- **Auto-refresh**: Real-time data updates
+- **API Endpoints**: RESTful API for data management
+- **Persistent Storage**: Data saved between sessions (requires database for production)
+
+### API Endpoints
+
+- `GET /api/portfolio` - Retrieve all portfolio data
+- `POST /api/portfolio` - Add new transaction
+- `DELETE /api/portfolio` - Clear all transactions
+
+## Important Notes
+
+⚠️ **For Production Deployment**:
+- The current setup uses file-based storage (works locally)
+- Vercel's filesystem is **read-only** in production
+- You **must** use a database for production (see DEPLOYMENT.md)
+- Recommended: Vercel Postgres, Vercel KV, MongoDB Atlas, or Supabase
+
+## Original Features
+
+### Prerequisites (Original) 
 - npm or yarn
 
 ### Installation

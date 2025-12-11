@@ -1,11 +1,16 @@
-import { Transaction, EquityPoint, PortfolioStats } from '@/types/trading';
+import { DailyPnL, EquityPoint, PortfolioStats } from '@/types/trading';
 
 /**
- * Mock data generator for the trading dashboard
+ * Mock data generator for the trading dashboard (kept for backward compatibility)
  */
 
-export const generateMockTransactions = (): Transaction[] => {
-  const transactions: Transaction[] = [
+export const generateMockDailyPnL = (): DailyPnL[] => {
+  return [];
+};
+
+// Deprecated - kept for backward compatibility
+export const generateMockTransactions = (): any[] => {
+  const transactions: any[] = [
     {
       id: '1',
       date: new Date('2024-12-01'),
@@ -160,12 +165,12 @@ export const generatePortfolioStats = (): PortfolioStats => {
     totalPnL,
     totalPnLPercentage: (totalPnL / initialCapital) * 100,
     winRate: completedTrades.length > 0 ? (winningTrades.length / completedTrades.length) * 100 : 0,
-    totalTrades: completedTrades.length,
-    winningTrades: winningTrades.length,
-    losingTrades: losingTrades.length,
-    averageWin,
+    totalDays: completedTrades.length,
+    profitDays: winningTrades.length,
+    lossDays: losingTrades.length,
+    averageProfit: averageWin,
     averageLoss,
-    largestWin: Math.max(...completedTrades.map(t => t.pnl || 0)),
+    largestProfit: Math.max(...completedTrades.map(t => t.pnl || 0)),
     largestLoss: Math.min(...completedTrades.map(t => t.pnl || 0)),
     currentEquity,
     initialCapital,
