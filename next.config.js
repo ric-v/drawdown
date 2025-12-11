@@ -1,8 +1,4 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-	output: 'export',
-	// Use a stable asset prefix if needed, and enable trailingSlash for exported sites
-	trailingSlash: true,
-}
-
+  // Azure Static Web Apps will deploy as a full Next.js app with API routes
 module.exports = nextConfig
