@@ -45,4 +45,10 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3"
   }
+},
+"overrides": {
+  "react-day-picker": {
+    "react": "$react"
+  }
+}
 }
