@@ -47,6 +47,10 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Data files - persistent storage
+data/
+*.json.backup
+
 # Optional npm cache directory
 .npm
 

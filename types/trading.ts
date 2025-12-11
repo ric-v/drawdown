@@ -3,20 +3,24 @@
  * TypeScript interfaces for the trading dashboard
  */
 
-export interface Transaction {
+export interface DailyPnL {
   id: string;
   date: Date;
-  symbol: string;
-  type: 'BUY' | 'SELL';
-  quantity: number;
-  price: number;
-  totalValue: number;
-  pnl?: number;
-  pnlPercentage?: number;
+  pnl: number; // Profit (+ve) or Loss (-ve) in INR
+  notes?: string;
+}
+
+export interface FundTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  type: 'DEPOSIT' | 'WITHDRAWAL';
+  notes?: string;
 }
 
 export interface EquityPoint {
-  date: string;
+  date: string; // ISO date string (YYYY-MM-DD) for filtering
+  displayDate?: string; // Formatted date for display
   equity: number;
   pnl: number;
   pnlPercentage: number;
@@ -26,15 +30,25 @@ export interface PortfolioStats {
   totalPnL: number;
   totalPnLPercentage: number;
   winRate: number;
-  totalTrades: number;
-  winningTrades: number;
-  losingTrades: number;
-  averageWin: number;
+  totalDays: number;
+  profitDays: number;
+  lossDays: number;
+  averageProfit: number;
   averageLoss: number;
-  largestWin: number;
+  largestProfit: number;
   largestLoss: number;
   currentEquity: number;
   initialCapital: number;
+}
+
+// Keeping for backward compatibility
+export interface Transaction extends DailyPnL {
+  symbol?: string;
+  type?: 'BUY' | 'SELL';
+  quantity?: number;
+  price?: number;
+  totalValue?: number;
+  pnlPercentage?: number;
 }
 
 export interface KPICardProps {

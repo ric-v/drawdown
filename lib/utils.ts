@@ -1,43 +1,29 @@
-import { type ClassValue, clsx } from "clsx"
+import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/**
- * Format currency with conditional coloring
- */
-export function formatCurrency(value: number, showSign: boolean = false): string {
-  const sign = showSign && value > 0 ? '+' : '';
-  return `${sign}$${Math.abs(value).toLocaleString('en-US', { 
+export function formatCurrency(amount: number, withSign: boolean = false): string {
+  const formatted = `₹${Math.abs(amount).toLocaleString('en-IN', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
   })}`;
+  
+  if (!withSign) return formatted;
+  return amount >= 0 ? `+${formatted}` : `-${formatted}`;
 }
 
-/**
- * Format percentage with conditional coloring
- */
-export function formatPercentage(value: number, showSign: boolean = false): string {
-  const sign = showSign && value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}%`;
+export function formatPercentage(value: number, withSign: boolean = false): string {
+  const formatted = `${Math.abs(value).toFixed(2)}%`;
+  
+  if (!withSign) return formatted;
+  return value >= 0 ? `+${formatted}` : `-${formatted}`;
 }
 
-/**
- * Get color class based on value (Green for positive, Red for negative)
- */
 export function getColorClass(value: number): string {
-  if (value > 0) return 'text-emerald-500';
-  if (value < 0) return 'text-red-500';
-  return 'text-gray-400';
-}
-
-/**
- * Get background color class based on value
- */
-export function getBgColorClass(value: number): string {
-  if (value > 0) return 'bg-emerald-500/10';
-  if (value < 0) return 'bg-red-500/10';
-  return 'bg-gray-500/10';
+  if (value > 0) return 'text-emerald-500 dark:text-emerald-400';
+  if (value < 0) return 'text-red-500 dark:text-red-400';
+  return 'text-gray-500 dark:text-gray-400';
 }
