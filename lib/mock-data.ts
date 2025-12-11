@@ -126,7 +126,7 @@ export const generateEquityData = (): EquityPoint[] => {
   for (let i = 0; i < dailyReturns.length; i++) {
     const date = new Date(startDate);
     date.setDate(date.getDate() + i);
-    
+
     const pnlPercentage = dailyReturns[i];
     const pnl = equity * (pnlPercentage / 100);
     equity += pnl;
@@ -145,21 +145,67 @@ export const generateEquityData = (): EquityPoint[] => {
 export const generatePortfolioStats = (): PortfolioStats => {
   const transactions = generateMockTransactions();
   const completedTrades = transactions.filter(t => t.pnl !== undefined);
-  
+
   const winningTrades = completedTrades.filter(t => (t.pnl || 0) > 0);
   const losingTrades = completedTrades.filter(t => (t.pnl || 0) < 0);
-  
+
   const totalPnL = completedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
   const initialCapital = 100000;
   const currentEquity = initialCapital + totalPnL;
-  
+
   const averageWin = winningTrades.length > 0
     ? winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / winningTrades.length
     : 0;
-  
+
   const averageLoss = losingTrades.length > 0
     ? losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / losingTrades.length
     : 0;
+
+  // Calculate Advanced KPIs
+  const grossProfit = winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+  const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0));
+  const profitFactor = grossLoss === 0 ? grossProfit : grossProfit / grossLoss;
+
+  const winRateDec = completedTrades.length > 0 ? winningTrades.length / completedTrades.length : 0;
+  const lossRateDec = completedTrades.length > 0 ? losingTrades.length / completedTrades.length : 0;
+  const expectancy = (winRateDec * averageWin) + (lossRateDec * averageLoss);
+
+  // Max Drawdown Calculation
+  let maxDd = 0;
+  let peakEquity = initialCapital;
+  let runningEquity = initialCapital;
+
+  // Sort trades by date to ensure correct drawdown calculation
+  const sortedTrades = [...completedTrades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  for (const t of sortedTrades) {
+    runningEquity += (t.pnl || 0);
+    if (runningEquity > peakEquity) {
+      peakEquity = runningEquity;
+    }
+    const currentDd = peakEquity > 0 ? (peakEquity - runningEquity) / peakEquity : 0;
+    if (currentDd > maxDd) {
+      maxDd = currentDd;
+    }
+  }
+
+  // Current Streak Calculation
+  let currentStreak = 0;
+  if (sortedTrades.length > 0) {
+    const lastTrade = sortedTrades[sortedTrades.length - 1];
+    const isWin = (lastTrade.pnl || 0) > 0;
+    currentStreak = isWin ? 1 : -1;
+
+    for (let i = sortedTrades.length - 2; i >= 0; i--) {
+      const trade = sortedTrades[i];
+      const tradeIsWin = (trade.pnl || 0) > 0;
+      if (tradeIsWin === isWin) {
+        currentStreak += (isWin ? 1 : -1);
+      } else {
+        break;
+      }
+    }
+  }
 
   return {
     totalPnL,
@@ -174,5 +220,9 @@ export const generatePortfolioStats = (): PortfolioStats => {
     largestLoss: Math.min(...completedTrades.map(t => t.pnl || 0)),
     currentEquity,
     initialCapital,
+    profitFactor,
+    expectancy,
+    maxDrawdown: maxDd * 100, // Percentage
+    currentStreak,
   };
 };
