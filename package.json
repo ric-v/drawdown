@@ -4,8 +4,7 @@
   "description": "Daily portfolio tracker",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && next export",
-    "export": "next build && next export",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
