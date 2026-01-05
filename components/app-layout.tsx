@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { UserNav } from '@/components/auth/user-nav';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -20,16 +21,16 @@ export function AppLayout({ children, stats }: AppLayoutProps) {
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 px-6">
         <div className="flex items-center gap-3">
-          <Image 
-            src="/logo.png" 
-            alt="Logo" 
-            width={32} 
+          <Image
+            src="/logo.png"
+            alt="Logo"
+            width={32}
             height={32}
             className="object-contain"
           />
-          <h1 className="hidden md:block font-bold text-lg md:text-xl text-gray-900 dark:text-gray-100">Trading PnL Tracker</h1>
+          <h1 className="hidden md:block font-bold text-lg md:text-xl text-gray-900 dark:text-gray-100">Drawdown</h1>
         </div>
-        
+
         <div className="flex items-center gap-2 md:gap-4">
           {stats && (
             <div className="flex items-center gap-2 md:gap-3">
@@ -55,6 +56,7 @@ export function AppLayout({ children, stats }: AppLayoutProps) {
             </div>
           )}
           <ThemeToggle />
+          <UserNav />
         </div>
       </header>
 

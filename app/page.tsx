@@ -42,8 +42,12 @@ import {
 } from "@/components/ui/popover"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useSession } from "next-auth/react"
+import { LoginScreen } from "@/components/auth/login-screen"
 
 export default function Dashboard() {
+  const { data: session, status } = useSession()
+
   const [dailyPnL, setDailyPnL] = useState<DailyPnL[]>([]);
   const [equityData, setEquityData] = useState<EquityPoint[]>([]);
   const [stats, setStats] = useState<PortfolioStats>({
@@ -128,8 +132,10 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [date]); // Re-fetch when date changes
+    if (status === 'authenticated') {
+      fetchData();
+    }
+  }, [date, status]); // Re-fetch when date changes
 
   const handleDeleteEntry = async (id: string) => {
     if (!confirm('Are you sure you want to delete this entry?')) {
@@ -161,6 +167,14 @@ export default function Dashboard() {
     setIsEditModalOpen(false);
     setEditingEntry(null);
   };
+
+  if (status === "loading") {
+    return <div className="flex items-center justify-center min-h-screen"><RefreshCw className="animate-spin h-8 w-8" /></div>
+  }
+
+  if (status === "unauthenticated") {
+    return <LoginScreen />
+  }
 
   return (
     <AppLayout stats={globalStats}>

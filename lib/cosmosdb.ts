@@ -30,11 +30,16 @@ export async function initCosmosDB() {
   database = db;
 
   // Create container if it doesn't exist
-  const { container: cont } = await database.containers.createIfNotExists({
-    id: containerName,
-    partitionKey: { paths: ["/type"] }, // Partition by document type
-  });
-  container = cont;
+  try {
+    const { container: cont } = await database.containers.createIfNotExists({
+      id: containerName,
+      partitionKey: { paths: ["/type"] }, // Partition by document type
+    });
+    container = cont;
+  } catch (error) {
+    console.error(`Error creating container with name "${containerName}":`, error);
+    throw error;
+  }
 
   return container;
 }

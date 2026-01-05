@@ -1,4 +1,4 @@
-# Trading PnL Tracker 📈
+# Drawdown 📉
 
 A professional Trading Profit & Loss (PnL) tracker built with Next.js, TypeScript, Tailwind CSS, and Recharts. Features a sleek Bloomberg terminal-inspired dark-mode dashboard for tracking trading performance.
 

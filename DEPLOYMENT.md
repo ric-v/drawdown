@@ -1,4 +1,4 @@
-# Trading PnL Tracker
+# Drawdown
 
 A professional trading portfolio tracker with real-time P&L analytics, built with Next.js and deployed on Vercel.
 

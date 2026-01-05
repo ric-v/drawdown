@@ -1,7 +1,8 @@
 {
-  "name": "daily-portfolio-tracker",
-  "version": "1.0.0",
-  "description": "Daily portfolio tracker",
+  "name": "drawdown",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Professional trading portfolio tracker",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -32,8 +33,10 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "framer-motion": "^12.23.26",
     "lucide-react": "^0.559.0",
     "next": "^16.0.8",
+    "next-auth": "^5.0.0-beta.30",
     "postcss": "^8.5.6",
     "react": "^19.2.1",
     "react-day-picker": "^8.10.1",

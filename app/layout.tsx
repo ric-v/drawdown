@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
+import { Gantari } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
+const gantari = Gantari({
+  subsets: ["latin"],
+  variable: "--font-gantari",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Trading PnL Tracker",
-  description: "Professional trading performance tracker with real-time analytics",
+  title: "Drawdown",
+  description: "Professional trading performance tracker",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
@@ -12,16 +19,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+import { auth } from "@/auth";
+import { SessionProvider } from "@/components/auth/session-provider";
+import { LoginScreen } from "@/components/auth/login-screen";
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans antialiased">
+      <body className={`${gantari.variable} font-sans antialiased`}>
         <ThemeProvider>
-          {children}
+          <SessionProvider>{children}</SessionProvider>
         </ThemeProvider>
       </body>
     </html>
