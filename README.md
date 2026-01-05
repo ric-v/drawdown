@@ -80,7 +80,16 @@ vercel login
 vercel --prod
 ```
 
-📖 **See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions and database setup.**
+📖 **See [docs/deployment/DEPLOYMENT.md](./docs/deployment/DEPLOYMENT.md) for detailed deployment instructions and database setup.**
+
+## 📚 Documentation
+
+All documentation is organized in the `docs/` folder for easy navigation. Start here:
+
+- **[Documentation Index](./docs/INDEX.md)** - Complete guide to all documentation
+- **[Setup Guide](./docs/setup/SETUP_GUIDE.md)** - OAuth configuration instructions  
+- **[Security Documentation](./docs/security/)** - OAuth implementation and security details
+- **[Deployment Guide](./docs/deployment/DEPLOYMENT.md)** - Production deployment steps
 
 ## Features
 
