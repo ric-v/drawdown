@@ -38,21 +38,37 @@ export default function PrivacyPage() {
                         </section>
 
                         <section className="p-6 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-gray-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-md transition-all duration-300">
-                            <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">2. Why Google & Microsoft Login?</h2>
+                            <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">2. Why Google Drive & OneDrive Access?</h2>
                             <p className="text-gray-600 dark:text-gray-400">
-                                You might wonder: <em>"If you don't store data, why do I need to log in?"</em>
+                                When you sign in with Google or Microsoft, we request limited access to your cloud storage. Here's exactly what we do:
                             </p>
-                            <ul className="list-disc list-inside mt-2 space-y-2 text-gray-600 dark:text-gray-400 ml-4">
-                                <li><strong>Security:</strong> It verifies you are a real human and not a bot attacking the site.</li>
-                                <li><strong>Access Control:</strong> It allows the application to securely ask <em>Google/Microsoft</em> for permission to read your specific spreadsheet files.</li>
-                                <li><strong>Safety:</strong> We never see your password. The entire login process happens on Google's or Microsoft's secure servers.</li>
+                            <ul className="list-disc list-inside mt-4 space-y-3 text-gray-600 dark:text-gray-400 ml-4">
+                                <li><strong>File Storage:</strong> We store your portfolio data as a compressed file (<code className="text-sm bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">drawdown-portfolio.json.gz</code>) in your own Google Drive or OneDrive.</li>
+                                <li><strong>Read Access:</strong> We read this file to display your trading performance, daily P&L, and fund transactions.</li>
+                                <li><strong>Write Access:</strong> When you add or update trades, we write the changes back to your file in real-time.</li>
+                                <li><strong>Limited Scope:</strong> We only access the specific portfolio file we create. We cannot see, read, or access any other files in your Drive/OneDrive.</li>
+                                <li><strong>No Central Database:</strong> Your data never touches our servers. It goes directly from your browser to your cloud storage.</li>
                             </ul>
+                            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/30 border-l-4 border-blue-500 rounded">
+                                <p className="text-sm text-blue-900 dark:text-blue-200">
+                                    <strong>Why this approach?</strong> By storing data in your own cloud storage, you maintain complete ownership and control. You can view, backup, or delete the file at any time without our involvement.
+                                </p>
+                            </div>
                         </section>
 
                         <section className="p-6 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-gray-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-md transition-all duration-300">
-                            <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">3. Where is the data?</h2>
+                            <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">3. Data Storage & Security</h2>
                             <p className="text-gray-600 dark:text-gray-400">
-                                Your portfolio data files stay where they belong: in your **Google Drive** or **OneDrive**. We simply fetch them, format them into a nice chart, and show them to you. When you close the tab, we forget everything.
+                                Your portfolio data is stored as a compressed file in your personal cloud storage:
+                            </p>
+                            <ul className="list-disc list-inside mt-3 space-y-2 text-gray-600 dark:text-gray-400 ml-4">
+                                <li><strong>Google users:</strong> File stored in your Google Drive root directory</li>
+                                <li><strong>Microsoft users:</strong> File stored in your OneDrive root directory</li>
+                                <li><strong>Compression:</strong> Data is compressed using gzip to save space and bandwidth</li>
+                                <li><strong>Format:</strong> Plain JSON format - you can download and read it with any text editor</li>
+                            </ul>
+                            <p className="text-gray-600 dark:text-gray-400 mt-4">
+                                When you use the app, we load this file into your browser's memory, display it, and when you close the tab, everything is cleared. We have no persistent storage or cache of your data.
                             </p>
                         </section>
 

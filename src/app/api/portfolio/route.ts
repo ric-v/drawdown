@@ -1,84 +1,63 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/config/auth';
 import { DailyPnL, PortfolioStats, EquityPoint } from '@/types/trading';
-import { getCosmosContainer, initCosmosDB } from '@/lib/database/cosmosdb';
+import * as GoogleDrive from '@/lib/google-drive';
+import * as OneDrive from '@/lib/onedrive';
 
 interface PortfolioData {
   dailyPnL: DailyPnL[];
+  fundTransactions: any[];
   initialCapital: number;
-  lastUpdated: string | null;
+  lastUpdated: string;
 }
 
-// Initialize Cosmos DB on first call
-let initialized = false;
-async function ensureInitialized() {
-  if (!initialized) {
-    await initCosmosDB();
-    initialized = true;
+/**
+ * Read portfolio data from appropriate cloud storage based on provider
+ */
+const readData = async (accessToken: string, provider: string): Promise<PortfolioData> => {
+  try {
+    let data;
+    
+    if (provider === 'google') {
+      data = await GoogleDrive.readPortfolioData(accessToken);
+    } else if (provider === 'microsoft-entra-id') {
+      data = await OneDrive.readPortfolioData(accessToken);
+    } else {
+      throw new Error('Unsupported provider');
+    }
+
+    if (!data) {
+      // Return empty portfolio if file doesn't exist
+      return {
+        dailyPnL: [],
+        fundTransactions: [],
+        initialCapital: 100000,
+        lastUpdated: new Date().toISOString()
+      };
+    }
+
+    // Convert date strings back to Date objects
+    const dailyPnL = data.dailyPnL.map((entry: any) => ({
+      ...entry,
+      date: new Date(entry.date)
+    }));
+
+    return {
+      dailyPnL,
+      fundTransactions: data.fundTransactions || [],
+      initialCapital: data.initialCapital,
+      lastUpdated: data.lastUpdated
+    };
+  } catch (error) {
+    console.error('Error reading portfolio data:', error);
+    // Return empty portfolio on error
+    return {
+      dailyPnL: [],
+      fundTransactions: [],
+      initialCapital: 100000,
+      lastUpdated: new Date().toISOString()
+    };
   }
-}
-
-const readData = async (): Promise<PortfolioData> => {
-  await ensureInitialized();
-  const container = await getCosmosContainer();
-
-  // Fetch all daily P&L entries
-  const { resources: pnlDocs } = await container.items
-    .query({
-      query: "SELECT * FROM c WHERE c.type = 'dailyPnL' ORDER BY c.date DESC"
-    })
-    .fetchAll();
-
-  // Fetch config (initial capital)
-  const { resources: configDocs } = await container.items
-    .query({
-      query: "SELECT * FROM c WHERE c.type = 'config' AND c.id = 'config'"
-    })
-    .fetchAll();
-
-  const dailyPnL = pnlDocs.map((doc: any) => ({
-    id: doc.id,
-    date: new Date(doc.date),
-    pnl: doc.pnl,
-    notes: doc.notes
-  }));
-
-  const initialCapital = configDocs[0]?.initialCapital || 100000;
-  const lastUpdated = configDocs[0]?.lastUpdated || null;
-
-  return { dailyPnL, initialCapital, lastUpdated };
-};
-
-const writeConfig = async (initialCapital: number, lastUpdated: string) => {
-  await ensureInitialized();
-  const container = await getCosmosContainer();
-
-  await container.items.upsert({
-    id: 'config',
-    type: 'config',
-    initialCapital,
-    lastUpdated
-  });
-};
-
-const writeDailyPnL = async (entry: DailyPnL) => {
-  await ensureInitialized();
-  const container = await getCosmosContainer();
-
-  await container.items.upsert({
-    id: entry.id,
-    type: 'dailyPnL',
-    date: entry.date.toISOString(),
-    pnl: entry.pnl,
-    notes: entry.notes
-  });
-};
-
-const deleteDailyPnL = async (id: string) => {
-  await ensureInitialized();
-  const container = await getCosmosContainer();
-
-  await container.item(id, 'dailyPnL').delete();
 };
 
 const calculatePortfolioStats = (dailyPnL: DailyPnL[], initialCapital: number): PortfolioStats => {
@@ -220,7 +199,7 @@ export async function GET(request: Request) {
   try {
     // Check authentication
     const session = await auth()
-    if (!session) {
+    if (!session || !session.accessToken || !session.provider) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -229,7 +208,7 @@ export async function GET(request: Request) {
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
-    const data = await readData();
+    const data = await readData(session.accessToken, session.provider);
 
     let filteredDailyPnL = data.dailyPnL;
     let adjustedInitialCapital = data.initialCapital;
@@ -293,7 +272,7 @@ export async function POST(request: Request) {
   try {
     // Check authentication
     const session = await auth()
-    if (!session) {
+    if (!session || !session.accessToken || !session.provider) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -307,6 +286,10 @@ export async function POST(request: Request) {
       );
     }
 
+    // Read existing data
+    const data = await readData(session.accessToken, session.provider);
+
+    // Create new entry
     const newEntry: DailyPnL = {
       id: `pnl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       date: new Date(date),
@@ -314,9 +297,16 @@ export async function POST(request: Request) {
       notes: notes || '',
     };
 
-    await writeDailyPnL(newEntry);
-    const data = await readData();
-    await writeConfig(data.initialCapital, new Date().toISOString());
+    // Add to existing data
+    data.dailyPnL.push(newEntry);
+    data.lastUpdated = new Date().toISOString();
+
+    // Save back to cloud storage
+    if (session.provider === 'google') {
+      await GoogleDrive.savePortfolioData(session.accessToken, data);
+    } else if (session.provider === 'microsoft-entra-id') {
+      await OneDrive.savePortfolioData(session.accessToken, data);
+    }
 
     const stats = calculatePortfolioStats(data.dailyPnL, data.initialCapital);
     const equityData = generateEquityData(data.dailyPnL, data.initialCapital);
@@ -338,31 +328,28 @@ export async function DELETE() {
   try {
     // Check authentication
     const session = await auth()
-    if (!session) {
+    if (!session || !session.accessToken || !session.provider) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    await ensureInitialized();
-    const container = await getCosmosContainer();
+    // Clear data by saving empty portfolio
+    const emptyData = {
+      dailyPnL: [],
+      fundTransactions: [],
+      initialCapital: 100000,
+      lastUpdated: new Date().toISOString()
+    };
 
-    // Delete all daily P&L entries
-    const { resources: pnlDocs } = await container.items
-      .query({
-        query: "SELECT c.id FROM c WHERE c.type = 'dailyPnL'"
-      })
-      .fetchAll();
-
-    for (const doc of pnlDocs) {
-      await container.item(doc.id, 'dailyPnL').delete();
+    if (session.provider === 'google') {
+      await GoogleDrive.savePortfolioData(session.accessToken, emptyData);
+    } else if (session.provider === 'microsoft-entra-id') {
+      await OneDrive.savePortfolioData(session.accessToken, emptyData);
     }
-
-    const data = await readData();
-    await writeConfig(data.initialCapital, new Date().toISOString());
 
     return NextResponse.json({
       message: 'All data cleared successfully',
       dailyPnL: [],
-      stats: calculatePortfolioStats([], data.initialCapital),
+      stats: calculatePortfolioStats([], emptyData.initialCapital),
       equityData: []
     });
   } catch (error) {

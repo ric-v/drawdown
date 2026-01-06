@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/config/auth';
-import { getCosmosContainer } from '@/lib/database/cosmosdb';
+import * as GoogleDrive from '@/lib/google-drive';
+import * as OneDrive from '@/lib/onedrive';
 
 // PUT: Update a specific entry by ID
 export async function PUT(
@@ -10,7 +11,7 @@ export async function PUT(
   try {
     // Check authentication
     const session = await auth()
-    if (!session) {
+    if (!session || !session.accessToken || !session.provider) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -18,15 +19,38 @@ export async function PUT(
     const body = await request.json();
     const { date, pnl, notes } = body;
     
-    const container = await getCosmosContainer();
-    
-    await container.items.upsert({
+    // Read existing data
+    let data;
+    if (session.provider === 'google') {
+      data = await GoogleDrive.readPortfolioData(session.accessToken);
+    } else if (session.provider === 'microsoft-entra-id') {
+      data = await OneDrive.readPortfolioData(session.accessToken);
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: 'Portfolio not found' }, { status: 404 });
+    }
+
+    // Find and update the entry
+    const entryIndex = data.dailyPnL.findIndex((entry: any) => entry.id === id);
+    if (entryIndex === -1) {
+      return NextResponse.json({ error: 'Entry not found' }, { status: 404 });
+    }
+
+    data.dailyPnL[entryIndex] = {
       id,
-      type: 'dailyPnL',
-      date: new Date(date).toISOString(),
+      date: new Date(date),
       pnl: parseFloat(pnl),
       notes: notes || ''
-    });
+    };
+    data.lastUpdated = new Date().toISOString();
+
+    // Save back to cloud storage
+    if (session.provider === 'google') {
+      await GoogleDrive.savePortfolioData(session.accessToken, data);
+    } else if (session.provider === 'microsoft-entra-id') {
+      await OneDrive.savePortfolioData(session.accessToken, data);
+    }
     
     return NextResponse.json({ 
       success: true,
@@ -49,14 +73,34 @@ export async function DELETE(
   try {
     // Check authentication
     const session = await auth()
-    if (!session) {
+    if (!session || !session.accessToken || !session.provider) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = await params;
-    const container = await getCosmosContainer();
-    
-    await container.item(id, 'dailyPnL').delete();
+
+    // Read existing data
+    let data;
+    if (session.provider === 'google') {
+      data = await GoogleDrive.readPortfolioData(session.accessToken);
+    } else if (session.provider === 'microsoft-entra-id') {
+      data = await OneDrive.readPortfolioData(session.accessToken);
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: 'Portfolio not found' }, { status: 404 });
+    }
+
+    // Filter out the entry
+    data.dailyPnL = data.dailyPnL.filter((entry: any) => entry.id !== id);
+    data.lastUpdated = new Date().toISOString();
+
+    // Save back to cloud storage
+    if (session.provider === 'google') {
+      await GoogleDrive.savePortfolioData(session.accessToken, data);
+    } else if (session.provider === 'microsoft-entra-id') {
+      await OneDrive.savePortfolioData(session.accessToken, data);
+    }
     
     return NextResponse.json({ 
       success: true,

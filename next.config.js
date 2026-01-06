@@ -4,6 +4,8 @@ const nextConfig = {
   images: {
     unoptimized: true, // Required for Azure Static Web Apps
   },
+  serverExternalPackages: ['@googleapis/drive', 'pako'],
+  turbopack: {},
 }
 
 module.exports = nextConfig

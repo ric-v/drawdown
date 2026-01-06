@@ -40,11 +40,23 @@ export default function TermsPage() {
                         <section className="p-6 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-gray-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-md transition-all duration-300">
                             <h2 className="text-2xl font-semibold mb-4 text-blue-600 dark:text-blue-400">2. You Own Your Data</h2>
                             <p className="text-gray-600 dark:text-gray-400">
-                                We do not have a database. We do not have a server farm. All your data lives in your own connected <strong>Google Drive</strong> or <strong>OneDrive</strong>. This website simply acts as a "viewer" — it reads your files and displays them in a pretty dashboard.
+                                We do not have a database. We do not have a server farm. All your data lives in your own connected <strong>Google Drive</strong> or <strong>OneDrive</strong>.
                             </p>
-                            <p className="text-gray-600 dark:text-gray-400 mt-2">
-                                You can inspect, modify, or delete your files at any time directly from your cloud storage provider. We have no control over it.
-                            </p>
+                            <div className="mt-4 space-y-3">
+                                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">How It Works:</h3>
+                                <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-400 ml-4">
+                                    <li><strong>Storage Location:</strong> A single compressed file (<code className="text-sm bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">drawdown-portfolio.json.gz</code>) is created in your cloud storage root directory</li>
+                                    <li><strong>What's Inside:</strong> Your daily P&L entries, fund transactions (deposits/withdrawals), and initial capital</li>
+                                    <li><strong>Read/Write:</strong> The app reads this file to display your dashboard and writes to it when you make changes</li>
+                                    <li><strong>Permissions:</strong> We only request access to files created by this app - not your entire Drive/OneDrive</li>
+                                    <li><strong>Your Control:</strong> You can download, backup, modify, or delete this file anytime from your cloud storage</li>
+                                </ul>
+                                <div className="p-4 bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500 rounded mt-4">
+                                    <p className="text-sm text-green-900 dark:text-green-200">
+                                        <strong>Zero Database Costs:</strong> By using your existing cloud storage, you don't pay us anything, and your data stays under your direct control with automatic backups from Google/Microsoft.
+                                    </p>
+                                </div>
+                            </div>
                         </section>
 
                         <section className="p-6 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-gray-200/50 dark:border-slate-800/50 shadow-sm hover:shadow-md transition-all duration-300">
