@@ -300,8 +300,11 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
       <CardHeader className="p-4 md:p-6 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
-              📊 Trading Journal
+            <CardTitle className="text-xl font-bold tracking-tight flex items-center gap-2">
+              <span>📊</span>
+              <span className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
+                Trading Journal
+              </span>
             </CardTitle>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {transactions.length} trading days • Pattern recognition over scrolling

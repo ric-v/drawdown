@@ -18,7 +18,8 @@ import {
 import { cn } from '@/lib/utils/utils';
 import { formatCurrencyShort, formatCurrency } from '@/lib/utils/format-settings';
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Calendar, Activity, DollarSign, Target, Zap, BarChart2, Scale, TrendingDown } from 'lucide-react';
+import { TrendingUp, BarChart3, Calendar, Activity, DollarSign, Target, Zap, BarChart2, Scale, TrendingDown, CalendarDays, CalendarRange } from 'lucide-react';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
 import { PnLCalendar } from './pnl-calendar';
 import { DailyPnL } from '@/types/trading';
 import { useSettings } from '@/hooks/use-settings';
@@ -60,6 +61,7 @@ export function EquityChart({
   const [storedEquityViewMode, setStoredEquityViewMode] = useLocalStorage<'absolute' | 'r-multiple'>('equity-view-mode', 'absolute');
   const [storedPnlViewMode, setStoredPnlViewMode] = useLocalStorage<'raw' | 'clipped' | 'log'>('pnl-view-mode', 'raw');
   const [storedShowDrawdown, setStoredShowDrawdown] = useLocalStorage<boolean>('equity-show-drawdown', true);
+  const [aggregationPeriod, setAggregationPeriod] = useLocalStorage<'daily' | 'weekly' | 'monthly'>('equity-aggregation-period', 'daily');
   
   // Annotations state (stored client-side for this session)
   const [annotations, setAnnotations] = useLocalStorage<Array<{ date: string; text: string; type: 'large-loss' | 'overtrade' | 'rule-break' }>>('equity-annotations', []);
@@ -90,26 +92,87 @@ export function EquityChart({
     { id: 'log', label: 'Log Scale', icon: Scale }
   ];
 
+  // Tab configuration for aggregation periods
+  const aggregationItems: TabItem[] = [
+    { id: 'daily', label: 'Daily', icon: Calendar },
+    { id: 'weekly', label: 'Weekly', icon: CalendarDays },
+    { id: 'monthly', label: 'Monthly', icon: CalendarRange }
+  ];
+
+  // Aggregate data based on selected period
+  const aggregateData = (data: EquityPoint[], period: 'daily' | 'weekly' | 'monthly'): EquityPoint[] => {
+    if (period === 'daily') return data;
+
+    const groups = new Map<string, EquityPoint[]>();
+
+    data.forEach(point => {
+      const date = parseISO(point.date);
+      let key: string;
+      let displayDate: string;
+
+      if (period === 'weekly') {
+        const weekStart = startOfWeek(date, { weekStartsOn: 1 }); // Monday as start
+        key = format(weekStart, 'yyyy-MM-dd');
+        const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+        displayDate = `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`;
+      } else { // monthly
+        key = format(startOfMonth(date), 'yyyy-MM-dd');
+        displayDate = format(date, 'MMM yyyy');
+      }
+
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push({ ...point, displayDate });
+    });
+
+    // Aggregate each group
+    const aggregated: EquityPoint[] = [];
+    groups.forEach((points, key) => {
+      // Use the last equity value in the period (end of week/month)
+      const lastPoint = points[points.length - 1];
+      // Sum up PnL for the period
+      const totalPnl = points.reduce((sum, p) => sum + p.pnl, 0);
+      // Calculate percentage based on total PnL
+      const pnlPercentage = points[0].equity > 0 
+        ? (totalPnl / (points[0].equity - points[0].pnl)) * 100 
+        : 0;
+
+      aggregated.push({
+        date: key,
+        displayDate: lastPoint.displayDate!,
+        equity: lastPoint.equity,
+        pnl: totalPnl,
+        pnlPercentage: parseFloat(pnlPercentage.toFixed(2))
+      });
+    });
+
+    return aggregated.sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  // Apply aggregation to data
+  const aggregatedData = aggregateData(data, aggregationPeriod);
+
   // Calculate drawdown data for overlay
-  const dataWithDrawdown = data.map((point, index) => {
-    const peak = Math.max(...data.slice(0, index + 1).map(p => p.equity));
+  const dataWithDrawdown = aggregatedData.map((point, index) => {
+    const peak = Math.max(...aggregatedData.slice(0, index + 1).map(p => p.equity));
     const drawdownPercent = peak > 0 ? ((point.equity - peak) / peak) * 100 : 0;
     return {
       ...point,
       drawdownPercent,
       peak,
       isLossDay: point.pnl < 0,
-      isMajorLoss: point.pnl < -Math.abs(data.reduce((min, p) => Math.min(min, p.pnl), 0)) * 0.5 // 50% of worst day
+      isMajorLoss: point.pnl < -Math.abs(aggregatedData.reduce((min, p) => Math.min(min, p.pnl), 0)) * 0.5 // 50% of worst period
     };
   });
 
   // Process P&L data based on view mode
-  const processedPnLData = data.map(point => {
+  const processedPnLData = aggregatedData.map(point => {
     let processedPnL = point.pnl;
     
     if (currentPnlViewMode === 'clipped') {
       // Clip extreme outliers to 95th percentile
-      const sortedPnL = data.map(d => Math.abs(d.pnl)).sort((a, b) => b - a);
+      const sortedPnL = aggregatedData.map(d => Math.abs(d.pnl)).sort((a, b) => b - a);
       const clipThreshold = sortedPnL[Math.floor(sortedPnL.length * 0.05)];
       if (Math.abs(processedPnL) > clipThreshold) {
         processedPnL = processedPnL > 0 ? clipThreshold : -clipThreshold;
@@ -124,7 +187,7 @@ export function EquityChart({
     return {
       ...point,
       processedPnL,
-      isMajorLoss: point.pnl < -Math.abs(data.reduce((min, p) => Math.min(min, p.pnl), 0)) * 0.5
+      isMajorLoss: point.pnl < -Math.abs(aggregatedData.reduce((min, p) => Math.min(min, p.pnl), 0)) * 0.5
     };
   });
 
@@ -218,6 +281,19 @@ export function EquityChart({
           <div className="flex flex-wrap gap-2 items-center justify-between">
             {/* Left side - View modes */}
             <div className="flex flex-wrap gap-2">
+              {/* Aggregation Period Selector - Show for equity and pnl charts */}
+              {(chartType === 'equity' || chartType === 'pnl') && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Period:</span>
+                  <CustomTabs
+                    items={aggregationItems}
+                    value={aggregationPeriod}
+                    onValueChange={(value) => setAggregationPeriod(value as 'daily' | 'weekly' | 'monthly')}
+                    className="scale-90"
+                  />
+                </div>
+              )}
+              
               {chartType === 'equity' && (
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">View:</span>
@@ -295,7 +371,7 @@ export function EquityChart({
         </div>
       </CardHeader>
       <CardContent className="px-1 sm:px-4 pb-1">
-        {data.length === 0 ? (
+        {aggregatedData.length === 0 ? (
           <div className="h-[180px] sm:h-[200px] lg:h-[220px] w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-muted rounded-xl bg-muted/20">
             <div className="p-3 bg-muted rounded-full">
               <BarChart3 className="w-6 h-6 text-muted-foreground" />
