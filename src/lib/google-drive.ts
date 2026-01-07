@@ -1,8 +1,10 @@
 import pako from 'pako'
 import { drive } from '@googleapis/drive'
 import { OAuth2Client } from 'google-auth-library'
+import { UserSettings } from '@/types/settings'
 
 const PORTFOLIO_FILE_NAME = 'drawdown-portfolio.json.gz'
+const SETTINGS_FILE_NAME = 'drawdown-settings.json.gz'
 
 export interface PortfolioData {
   dailyPnL: any[]
@@ -44,38 +46,62 @@ async function getDriveClient(accessToken: string) {
 /**
  * Find portfolio file in Google Drive
  */
-export async function findPortfolioFile(accessToken: string): Promise<string | null> {
+export async function findPortfolioFile(accessToken: string): Promise<any | null> {
   const drive = await getDriveClient(accessToken)
   
-  const response = await drive.files.list({
-    q: `name='${PORTFOLIO_FILE_NAME}' and trashed=false`,
-    spaces: 'drive',
-    fields: 'files(id, name, modifiedTime)',
-    pageSize: 1
-  })
+  try {
+    const response = await drive.files.list({
+      q: `name='${PORTFOLIO_FILE_NAME}' and trashed=false`,
+      spaces: 'drive',
+      fields: 'files(id, name, size, createdTime, modifiedTime)',
+      pageSize: 1
+    })
 
-  if (response.data.files && response.data.files.length > 0) {
-    return response.data.files[0].id || null
+    if (response.data.files && response.data.files.length > 0) {
+      const file = response.data.files[0]
+      console.log('Found portfolio file:', file.id, file.name)
+      return file
+    }
+  } catch (error: any) {
+    console.error('Error finding portfolio file:', error.message)
+    // Return null if we can't find the file, which will trigger creation of a new one
+    return null
   }
 
   return null
 }
 
 /**
- * Read portfolio data from Google Drive
+ * Find settings file in Google Drive
  */
+export async function findSettingsFile(accessToken: string): Promise<any | null> {
+  const drive = await getDriveClient(accessToken)
+  
+  const response = await drive.files.list({
+    q: `name='${SETTINGS_FILE_NAME}' and trashed=false`,
+    spaces: 'drive',
+    fields: 'files(id, name, size, createdTime, modifiedTime)',
+    pageSize: 1
+  })
+
+  if (response.data.files && response.data.files.length > 0) {
+    return response.data.files[0]
+  }
+
+  return null
+}
 export async function readPortfolioData(accessToken: string): Promise<PortfolioData | null> {
   try {
-    const fileId = await findPortfolioFile(accessToken)
+    const file = await findPortfolioFile(accessToken)
     
-    if (!fileId) {
+    if (!file || !file.id) {
       return null
     }
 
     const drive = await getDriveClient(accessToken)
     
     const response = await drive.files.get({
-      fileId,
+      fileId: file.id,
       alt: 'media'
     }, {
       responseType: 'arraybuffer'
@@ -99,9 +125,148 @@ export async function createPortfolioFile(
   const drive = await getDriveClient(accessToken)
   const compressed = compressData(data)
 
+  try {
+    const response = await drive.files.create({
+      requestBody: {
+        name: PORTFOLIO_FILE_NAME,
+        mimeType: 'application/gzip'
+      },
+      media: {
+        mimeType: 'application/gzip',
+        body: require('stream').Readable.from(compressed)
+      },
+      fields: 'id'
+    })
+
+    const fileId = response.data.id || ''
+    console.log('Created new portfolio file:', fileId, PORTFOLIO_FILE_NAME)
+    return fileId
+  } catch (error: any) {
+    console.error('Error creating portfolio file:', error.message)
+    throw error
+  }
+}
+
+/**
+ * Update existing portfolio file in Google Drive
+ */
+export async function updatePortfolioFile(
+  accessToken: string,
+  fileId: string,
+  data: PortfolioData
+): Promise<void> {
+  const drive = await getDriveClient(accessToken)
+  const compressed = compressData(data)
+
+  try {
+    await drive.files.update({
+      fileId,
+      media: {
+        mimeType: 'application/gzip',
+        body: require('stream').Readable.from(compressed)
+      }
+    })
+  } catch (error: any) {
+    // If file not found (404), throw error to trigger fallback to create new file
+    if (error.code === 404 || error.status === 404) {
+      throw new Error(`File not found: ${JSON.stringify(error.response?.data || error.message)}`)
+    }
+    // Re-throw other errors
+    throw error
+  }
+}
+
+/**
+ * Save portfolio data to Google Drive (create or update)
+ */
+export async function savePortfolioData(
+  accessToken: string,
+  data: PortfolioData
+): Promise<void> {
+  const fileId = await findPortfolioFile(accessToken)
+  
+  if (fileId) {
+    try {
+      await updatePortfolioFile(accessToken, fileId, data)
+    } catch (error: any) {
+      // If update fails due to file not found, create new file
+      if (error.message.includes('File not found')) {
+        console.log('Portfolio file not found during update, creating new file')
+        await createPortfolioFile(accessToken, data)
+      } else {
+        throw error
+      }
+    }
+  } else {
+    await createPortfolioFile(accessToken, data)
+  }
+}
+
+/**
+ * Delete portfolio file from Google Drive
+ */
+export async function deletePortfolioFile(accessToken: string): Promise<void> {
+  const file = await findPortfolioFile(accessToken)
+  
+  if (file && file.id) {
+    const drive = await getDriveClient(accessToken)
+    await drive.files.delete({ fileId: file.id })
+  }
+}
+
+/**
+ * Get initial empty portfolio data
+ */
+export function getEmptyPortfolioData(): PortfolioData {
+  return {
+    dailyPnL: [],
+    fundTransactions: [],
+    initialCapital: 100000,
+    lastUpdated: new Date().toISOString()
+  }
+}
+
+/**
+ * Read settings data from Google Drive
+ */
+export async function readSettingsData(accessToken: string): Promise<UserSettings | null> {
+  try {
+    const file = await findSettingsFile(accessToken)
+    
+    if (!file || !file.id) {
+      return null
+    }
+
+    const drive = await getDriveClient(accessToken)
+    
+    const response = await drive.files.get({
+      fileId: file.id,
+      alt: 'media'
+    }, {
+      responseType: 'arraybuffer'
+    })
+
+    const buffer = Buffer.from(response.data as ArrayBuffer)
+    return decompressData(buffer)
+  } catch (error) {
+    console.error('Error reading settings from Google Drive:', error)
+    throw error
+  }
+}
+
+/**
+ * Create new settings file in Google Drive
+ */
+export async function createSettingsFile(
+  accessToken: string,
+  data: UserSettings
+): Promise<string> {
+  const drive = await getDriveClient(accessToken)
+  const compressed = compressData(data)
+
   const response = await drive.files.create({
     requestBody: {
-      name: PORTFOLIO_FILE_NAME,
+      name: SETTINGS_FILE_NAME,
       mimeType: 'application/gzip'
     },
     media: {
@@ -115,12 +280,12 @@ export async function createPortfolioFile(
 }
 
 /**
- * Update existing portfolio file in Google Drive
+ * Update existing settings file in Google Drive
  */
-export async function updatePortfolioFile(
+export async function updateSettingsFile(
   accessToken: string,
   fileId: string,
-  data: PortfolioData
+  data: UserSettings
 ): Promise<void> {
   const drive = await getDriveClient(accessToken)
   const compressed = compressData(data)
@@ -135,41 +300,17 @@ export async function updatePortfolioFile(
 }
 
 /**
- * Save portfolio data to Google Drive (create or update)
+ * Save settings data to Google Drive (create or update)
  */
-export async function savePortfolioData(
+export async function writeSettingsData(
   accessToken: string,
-  data: PortfolioData
+  data: UserSettings
 ): Promise<void> {
-  const fileId = await findPortfolioFile(accessToken)
+  const fileId = await findSettingsFile(accessToken)
   
   if (fileId) {
-    await updatePortfolioFile(accessToken, fileId, data)
+    await updateSettingsFile(accessToken, fileId, data)
   } else {
-    await createPortfolioFile(accessToken, data)
-  }
-}
-
-/**
- * Delete portfolio file from Google Drive
- */
-export async function deletePortfolioFile(accessToken: string): Promise<void> {
-  const fileId = await findPortfolioFile(accessToken)
-  
-  if (fileId) {
-    const drive = await getDriveClient(accessToken)
-    await drive.files.delete({ fileId })
-  }
-}
-
-/**
- * Get initial empty portfolio data
- */
-export function getEmptyPortfolioData(): PortfolioData {
-  return {
-    dailyPnL: [],
-    fundTransactions: [],
-    initialCapital: 100000,
-    lastUpdated: new Date().toISOString()
+    await createSettingsFile(accessToken, data)
   }
 }

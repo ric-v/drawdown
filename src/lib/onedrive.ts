@@ -1,6 +1,8 @@
 import pako from 'pako'
+import { UserSettings } from '@/types/settings'
 
 const PORTFOLIO_FILE_NAME = 'drawdown-portfolio.json.gz'
+const SETTINGS_FILE_NAME = 'drawdown-settings.json.gz'
 
 export interface PortfolioData {
   dailyPnL: any[]
@@ -138,5 +140,91 @@ export function getEmptyPortfolioData(): PortfolioData {
     fundTransactions: [],
     initialCapital: 100000,
     lastUpdated: new Date().toISOString()
+  }
+}
+/**
+ * Find settings file in OneDrive
+ */
+export async function findSettingsFile(accessToken: string): Promise<any | null> {
+  try {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${SETTINGS_FILE_NAME}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    )
+
+    if (response.ok) {
+      return await response.json()
+    }
+
+    return null
+  } catch (error) {
+    return null
+  }
+}
+
+/**
+ * Read settings data from OneDrive
+ */
+export async function readSettingsData(accessToken: string): Promise<UserSettings | null> {
+  try {
+    const file = await findSettingsFile(accessToken)
+    
+    if (!file) {
+      return null
+    }
+
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/content`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    )
+
+    if (!response.ok) {
+      return null
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
+    const decompressed = pako.ungzip(buffer, { to: 'string' })
+    return JSON.parse(decompressed)
+  } catch (error) {
+    console.error('Error reading settings from OneDrive:', error)
+    throw error
+  }
+}
+
+/**
+ * Write settings data to OneDrive (create or update)
+ */
+export async function writeSettingsData(
+  accessToken: string,
+  data: UserSettings
+): Promise<void> {
+  const jsonString = JSON.stringify(data)
+  const compressed = pako.gzip(jsonString)
+
+  const response = await fetch(
+    `https://graph.microsoft.com/v1.0/me/drive/root:/${SETTINGS_FILE_NAME}:/content`,
+    {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/gzip'
+      },
+      body: new Uint8Array(compressed)
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Failed to save settings to OneDrive: ${error}`)
   }
 }

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Edit2 } from 'lucide-react';
+import { useSettings } from '@/hooks/use-settings';
+import { getCurrencySymbol } from '@/lib/utils/format-settings';
 
 import {
   Dialog,
@@ -26,6 +28,7 @@ export function EditEquityForm({ currentEquity, onEquityUpdated, trigger }: Edit
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [equity, setEquity] = useState(currentEquity.toString());
+  const { settings } = useSettings();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +75,7 @@ export function EditEquityForm({ currentEquity, onEquityUpdated, trigger }: Edit
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
           <div className="space-y-3">
-            <Label htmlFor="equity" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Initial Capital (₹)</Label>
+            <Label htmlFor="equity" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Initial Capital ({getCurrencySymbol(settings)})</Label>
             <Input
               id="equity"
               type="number"

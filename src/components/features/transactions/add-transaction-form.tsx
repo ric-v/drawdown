@@ -18,11 +18,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 interface AddTransactionFormProps {
-  onTransactionAdded: () => void;
+  onAdd: (entry: Partial<DailyPnL>) => Promise<void>;
   trigger?: React.ReactNode;
 }
 
-export function AddTransactionForm({ onTransactionAdded, trigger }: AddTransactionFormProps) {
+export function AddTransactionForm({ onAdd, trigger }: AddTransactionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -42,26 +42,15 @@ export function AddTransactionForm({ onTransactionAdded, trigger }: AddTransacti
         notes: formData.notes || undefined,
       };
 
-      const response = await fetch('/api/portfolio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(entry),
-      });
+      await onAdd(entry);
 
-      if (response.ok) {
-        // Reset form
-        setFormData({
-          date: new Date().toISOString().split('T')[0],
-          pnl: '',
-          notes: '',
-        });
-        setIsOpen(false);
-        onTransactionAdded();
-      } else {
-        alert('Failed to add P&L entry');
-      }
+      // Reset form
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        pnl: '',
+        notes: '',
+      });
+      setIsOpen(false);
     } catch (error) {
       console.error('Error adding P&L entry:', error);
       alert('Error adding P&L entry');

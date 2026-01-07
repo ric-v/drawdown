@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DailyPnL } from '@/types/trading';
 import { cn, getColorClass } from '@/lib/utils/utils';
-import { format } from 'date-fns';
 import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, Edit2, Trash2, Layers } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import {
@@ -22,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { FormattedCurrency, FormattedDate } from '@/components/common/formatted-values';
 
 interface TransactionTableProps {
   transactions: DailyPnL[];
@@ -38,10 +38,6 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-
-  const formatINR = (amount: number) => {
-    return `₹${Math.abs(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -144,7 +140,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
                 currentTransactions.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium">
-                      {format(new Date(entry.date), 'MMM dd, yyyy')}
+                      <FormattedDate date={entry.date} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge
@@ -160,7 +156,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
                       </Badge>
                     </TableCell>
                     <TableCell className={cn("text-right font-medium", getColorClass(entry.pnl))}>
-                      {entry.pnl >= 0 ? '+' : '-'}{formatINR(entry.pnl)}
+                      {entry.pnl >= 0 ? '+' : '-'}<FormattedCurrency value={Math.abs(entry.pnl)} />
                     </TableCell>
                     <TableCell className="max-w-[300px] truncate text-muted-foreground hidden md:table-cell">
                       {entry.notes || '-'}

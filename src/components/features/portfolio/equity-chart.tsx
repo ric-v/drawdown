@@ -15,11 +15,15 @@ import {
   ReferenceLine,
   Cell,
 } from 'recharts';
-import { formatCurrency, cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/utils/utils';
+import { formatCurrencyShort, formatCurrency } from '@/lib/utils/format-settings';
 import { useState } from 'react';
-import { TrendingUp, BarChart3, Calendar, Activity } from 'lucide-react';
+import { TrendingUp, BarChart3, Calendar, Activity, DollarSign, Target, Zap, BarChart2, Scale, TrendingDown } from 'lucide-react';
 import { PnLCalendar } from './pnl-calendar';
 import { DailyPnL } from '@/types/trading';
+import { useSettings } from '@/hooks/use-settings';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { CustomTabs, TabItem } from '@/components/ui/custom-tabs';
 
 interface EquityChartProps {
   data: EquityPoint[];
@@ -27,91 +31,272 @@ interface EquityChartProps {
   dateRange: { start: Date; end: Date };
   onDateRangeChange: (range: { start: Date; end: Date }) => void;
   className?: string;
+  // Trader cockpit controls
+  showDrawdown?: boolean;
+  pnlViewMode?: 'raw' | 'clipped' | 'log';
+  equityViewMode?: 'absolute' | 'r-multiple';
+  onShowDrawdownChange?: (show: boolean) => void;
+  onPnlViewModeChange?: (mode: 'raw' | 'clipped' | 'log') => void;
+  onEquityViewModeChange?: (mode: 'absolute' | 'r-multiple') => void;
+  onCalendarDayClick?: (dayData: DailyPnL | null, date: Date) => void;
 }
 
-const EquityTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload as EquityPoint;
-    return (
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-xl">
-        <p className="text-gray-400 text-xs mb-2">{data.displayDate || data.date}</p>
-        <p className="text-gray-100 font-semibold">
-          Equity: {formatCurrency(data.equity)}
-        </p>
-        <p className={`text-sm ${data.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-          P&L: {formatCurrency(data.pnl, true)} ({data.pnlPercentage >= 0 ? '+' : ''}{data.pnlPercentage}%)
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
+export function EquityChart({ 
+  data, 
+  allData, 
+  dateRange, 
+  onDateRangeChange, 
+  className,
+  showDrawdown = true,
+  pnlViewMode = 'raw',
+  equityViewMode = 'absolute',
+  onShowDrawdownChange,
+  onPnlViewModeChange,
+  onEquityViewModeChange,
+  onCalendarDayClick
+}: EquityChartProps) {
+  // Use localStorage for persistent state
+  const [chartType, setChartType] = useLocalStorage<'equity' | 'pnl' | 'activity'>('equity-chart-type', 'equity');
+  const [storedEquityViewMode, setStoredEquityViewMode] = useLocalStorage<'absolute' | 'r-multiple'>('equity-view-mode', 'absolute');
+  const [storedPnlViewMode, setStoredPnlViewMode] = useLocalStorage<'raw' | 'clipped' | 'log'>('pnl-view-mode', 'raw');
+  const [storedShowDrawdown, setStoredShowDrawdown] = useLocalStorage<boolean>('equity-show-drawdown', true);
+  
+  // Annotations state (stored client-side for this session)
+  const [annotations, setAnnotations] = useLocalStorage<Array<{ date: string; text: string; type: 'large-loss' | 'overtrade' | 'rule-break' }>>('equity-annotations', []);
+  const { settings } = useSettings();
 
-const PnLTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload as EquityPoint;
-    return (
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-xl">
-        <p className="text-gray-400 text-xs mb-2">{data.displayDate || data.date}</p>
-        <p className={`font-semibold ${data.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-          P&L: {formatCurrency(data.pnl, true)}
-        </p>
-        <p className="text-sm text-gray-400">
-          {data.pnlPercentage >= 0 ? '+' : ''}{data.pnlPercentage}%
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
+  // Use stored values or props as fallback
+  const currentEquityViewMode = equityViewMode || storedEquityViewMode;
+  const currentPnlViewMode = pnlViewMode || storedPnlViewMode;
+  const currentShowDrawdown = showDrawdown !== undefined ? showDrawdown : storedShowDrawdown;
 
-export function EquityChart({ data, allData, dateRange, onDateRangeChange, className }: EquityChartProps) {
-  const [chartType, setChartType] = useState<'equity' | 'pnl' | 'activity'>('equity');
+  // Tab configuration for chart types
+  const tabItems: TabItem[] = [
+    { id: 'equity', label: 'Equity', icon: TrendingUp },
+    { id: 'pnl', label: 'P&L', icon: BarChart3 },
+    { id: 'activity', label: 'Calendar', icon: Calendar }
+  ];
+
+  // Tab configuration for equity view modes
+  const equityViewItems: TabItem[] = [
+    { id: 'absolute', label: 'Absolute ₹', icon: DollarSign },
+    { id: 'r-multiple', label: 'R-Multiple', icon: Target }
+  ];
+
+  // Tab configuration for P&L view modes
+  const pnlViewItems: TabItem[] = [
+    { id: 'raw', label: 'Raw ₹', icon: DollarSign },
+    { id: 'clipped', label: 'Clipped', icon: BarChart2 },
+    { id: 'log', label: 'Log Scale', icon: Scale }
+  ];
+
+  // Calculate drawdown data for overlay
+  const dataWithDrawdown = data.map((point, index) => {
+    const peak = Math.max(...data.slice(0, index + 1).map(p => p.equity));
+    const drawdownPercent = peak > 0 ? ((point.equity - peak) / peak) * 100 : 0;
+    return {
+      ...point,
+      drawdownPercent,
+      peak,
+      isLossDay: point.pnl < 0,
+      isMajorLoss: point.pnl < -Math.abs(data.reduce((min, p) => Math.min(min, p.pnl), 0)) * 0.5 // 50% of worst day
+    };
+  });
+
+  // Process P&L data based on view mode
+  const processedPnLData = data.map(point => {
+    let processedPnL = point.pnl;
+    
+    if (currentPnlViewMode === 'clipped') {
+      // Clip extreme outliers to 95th percentile
+      const sortedPnL = data.map(d => Math.abs(d.pnl)).sort((a, b) => b - a);
+      const clipThreshold = sortedPnL[Math.floor(sortedPnL.length * 0.05)];
+      if (Math.abs(processedPnL) > clipThreshold) {
+        processedPnL = processedPnL > 0 ? clipThreshold : -clipThreshold;
+      }
+    } else if (currentPnlViewMode === 'log') {
+      // Log scale transformation
+      processedPnL = processedPnL >= 0 
+        ? Math.log10(Math.abs(processedPnL) + 1) 
+        : -Math.log10(Math.abs(processedPnL) + 1);
+    }
+    
+    return {
+      ...point,
+      processedPnL,
+      isMajorLoss: point.pnl < -Math.abs(data.reduce((min, p) => Math.min(min, p.pnl), 0)) * 0.5
+    };
+  });
+
+  const EquityTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const drawdownData = dataWithDrawdown.find(d => d.date === data.date);
+      return (
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 shadow-xl min-w-[240px]">
+          <p className="text-gray-400 text-xs mb-3 font-medium">{data.displayDate || data.date}</p>
+          <div className="space-y-2">
+            <p className="text-gray-100 font-semibold text-sm">
+              Equity: {formatCurrency(data.equity, settings)}
+            </p>
+            <p className={`text-sm font-medium ${data.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              Daily P&L: {data.pnl >= 0 ? '+' : ''}{formatCurrency(Math.abs(data.pnl), settings)} 
+              <span className="text-gray-400 text-xs ml-1">({data.pnlPercentage >= 0 ? '+' : ''}{data.pnlPercentage}%)</span>
+            </p>
+            {drawdownData && drawdownData.drawdownPercent < -0.1 && (
+              <p className="text-rose-400 text-xs font-medium">
+                📉 Drawdown: {drawdownData.drawdownPercent.toFixed(1)}%
+              </p>
+            )}
+            {drawdownData?.isMajorLoss && (
+              <p className="text-amber-400 text-xs font-semibold">
+                ⚠️ Major loss day
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const PnLTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const worstLoss = Math.abs(processedPnLData.reduce((min, p) => Math.min(min, p.pnl), 0));
+      const lossPercentOfWorst = worstLoss > 0 ? (Math.abs(data.pnl) / worstLoss * 100) : 0;
+      
+      return (
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 shadow-xl min-w-[200px]">
+          <p className="text-gray-400 text-xs mb-3 font-medium">{data.displayDate || data.date}</p>
+          <div className="space-y-2">
+            <p className={`font-semibold text-sm ${data.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              P&L: {data.pnl >= 0 ? '+' : ''}{formatCurrency(Math.abs(data.pnl), settings)}
+            </p>
+            <p className="text-gray-400 text-xs">
+              {data.pnlPercentage >= 0 ? '+' : ''}{data.pnlPercentage}% of equity
+            </p>
+            {data.pnl < 0 && lossPercentOfWorst > 25 && (
+              <p className="text-amber-400 text-xs font-medium">
+                💥 {lossPercentOfWorst.toFixed(0)}% of worst loss
+              </p>
+            )}
+            {data.isMajorLoss && (
+              <p className="text-rose-400 text-xs font-semibold">
+                🚨 Review: Rule violated?
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const tickFormatter = (value: number) => {
+    return formatCurrencyShort(value, settings);
+  };
 
   return (
     <Card className={cn("lg:col-span-2 border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-xl rounded-2xl min-w-0 overflow-hidden", className)}>
-      <CardHeader className="flex flex-col gap-6 pb-6 p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <CardTitle className="text-2xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
-            {chartType === 'equity' ? 'Equity Curve' : 'Daily P&L'}
-          </CardTitle>
-          <div className="flex p-1.5 bg-gray-100/80 dark:bg-slate-800/80 rounded-xl w-fit backdrop-blur-sm border border-gray-200/50 dark:border-slate-700/50 shadow-sm">
-            <button
-              onClick={() => setChartType('equity')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${chartType === 'equity'
-                ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-md scale-[1.02]'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-900/50 hover:text-gray-900 dark:hover:text-white'
-                }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span>Equity</span>
-            </button>
-            <button
-              onClick={() => setChartType('pnl')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${chartType === 'pnl'
-                ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-md scale-[1.02]'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-900/50 hover:text-gray-900 dark:hover:text-white'
-                }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>P&L</span>
-            </button>
-            <button
-              onClick={() => setChartType('activity')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${chartType === 'activity'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
-                }`}
-            >
-              <Activity className="w-4 h-4" />
-              <span>Activity</span>
-            </button>
+      <CardHeader className="flex flex-col gap-2 pb-2 p-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
+              {chartType === 'equity' ? 'Equity Curve' : chartType === 'pnl' ? 'Daily P&L' : 'Activity Heatmap'}
+            </CardTitle>
+            
+            {/* Chart Type Selector */}
+            <CustomTabs
+              items={tabItems}
+              value={chartType}
+              onValueChange={(value) => setChartType(value as 'equity' | 'pnl' | 'activity')}
+            />
+          </div>
+          
+          {/* Trader Controls */}
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            {/* Left side - View modes */}
+            <div className="flex flex-wrap gap-2">
+              {chartType === 'equity' && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">View:</span>
+                  <CustomTabs
+                    items={equityViewItems}
+                    value={currentEquityViewMode}
+                    onValueChange={(value) => {
+                      const newMode = value as 'absolute' | 'r-multiple';
+                      setStoredEquityViewMode(newMode);
+                      onEquityViewModeChange?.(newMode);
+                    }}
+                    className="scale-90"
+                  />
+                </div>
+              )}
+              
+              {chartType === 'pnl' && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Scale:</span>
+                  <CustomTabs
+                    items={pnlViewItems}
+                    value={currentPnlViewMode}
+                    onValueChange={(value) => {
+                      const newMode = value as 'raw' | 'clipped' | 'log';
+                      setStoredPnlViewMode(newMode);
+                      onPnlViewModeChange?.(newMode);
+                    }}
+                    className="scale-90"
+                  />
+                </div>
+              )}
+            </div>
+            
+            {/* Right side - Risk toggles */}
+            {chartType === 'equity' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const newValue = !currentShowDrawdown;
+                    setStoredShowDrawdown(newValue);
+                    onShowDrawdownChange?.(newValue);
+                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
+                    currentShowDrawdown
+                      ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30'
+                      : 'bg-gray-100/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-400 border border-gray-200/50 dark:border-slate-700/50 hover:bg-gray-200/80 dark:hover:bg-slate-700/80'
+                  }`}
+                >
+                  <TrendingDown className="w-3 h-3" />
+                  <span>Drawdown Overlay</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    // Simple annotation - could be expanded to a modal
+                    const today = new Date().toISOString().split('T')[0];
+                    const text = prompt('Add annotation:');
+                    if (text) {
+                      const newAnnotation = { 
+                        date: today, 
+                        text, 
+                        type: 'rule-break' as const 
+                      };
+                      setAnnotations([...annotations, newAnnotation]);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 bg-purple-100/80 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/30 hover:bg-purple-200/80 dark:hover:bg-purple-700/80"
+                >
+                  <span>📝</span>
+                  <span>Annotate</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-1 sm:px-6 pb-6">
+      <CardContent className="px-1 sm:px-4 pb-1">
         {data.length === 0 ? (
-          <div className="h-[300px] sm:h-[350px] lg:h-[400px] w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-muted rounded-xl bg-muted/20">
+          <div className="h-[180px] sm:h-[200px] lg:h-[220px] w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-muted rounded-xl bg-muted/20">
             <div className="p-3 bg-muted rounded-full">
               <BarChart3 className="w-6 h-6 text-muted-foreground" />
             </div>
@@ -121,7 +306,7 @@ export function EquityChart({ data, allData, dateRange, onDateRangeChange, class
             </div>
           </div>
         ) : (
-          <div className="h-[300px] sm:h-[350px] lg:h-[400px] w-full">
+          <div className="h-[180px] sm:h-[240px] lg:h-[320px] w-full">
             {chartType === 'activity' ? (
               <div className="h-full w-full pt-4 max-w-full overflow-hidden flex flex-col">
                 <PnLCalendar
@@ -132,19 +317,25 @@ export function EquityChart({ data, allData, dateRange, onDateRangeChange, class
                     notes: ''
                   }))}
                   className="no-card border-0 shadow-none h-full w-full"
+                  onDayClick={onCalendarDayClick}
+                  showWeeklySummary={true}
                 />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 {chartType === 'equity' ? (
                   <AreaChart
-                    data={data}
-                    margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
+                    data={dataWithDrawdown}
+                    margin={{ top: 5, right: 0, left: -20, bottom: 0 }}
                   >
                     <defs>
                       <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.01} />
+                      </linearGradient>
+                      <linearGradient id="colorDrawdown" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.05} />
                       </linearGradient>
                       {/* Glow filter */}
                       <filter id="glow" height="200%" width="200%" x="-50%" y="-50%">
@@ -173,9 +364,23 @@ export function EquityChart({ data, allData, dateRange, onDateRangeChange, class
                       axisLine={false}
                       tickLine={false}
                       tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                      tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={tickFormatter}
                     />
                     <Tooltip content={<EquityTooltip />} cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                    
+                    {/* Drawdown overlay - shows the pain */}
+                    {currentShowDrawdown && (
+                      <Area
+                        type="monotone"
+                        dataKey="peak"
+                        stroke="transparent"
+                        fillOpacity={1}
+                        fill="url(#colorDrawdown)"
+                        connectNulls={false}
+                      />
+                    )}
+                    
+                    {/* Main equity curve */}
                     <Area
                       type="monotone"
                       dataKey="equity"
@@ -186,11 +391,26 @@ export function EquityChart({ data, allData, dateRange, onDateRangeChange, class
                       filter="url(#glow)"
                       animationDuration={1500}
                     />
+                    
+                    {/* Major loss day markers */}
+                    {dataWithDrawdown
+                      .filter(d => d.isMajorLoss)
+                      .map((point, index) => (
+                        <ReferenceLine 
+                          key={`loss-${index}`}
+                          x={point.displayDate || point.date} 
+                          stroke="#f59e0b" 
+                          strokeWidth={1.5}
+                          strokeDasharray="2 2"
+                          strokeOpacity={0.6}
+                        />
+                      ))
+                    }
                   </AreaChart>
                 ) : (
                   <BarChart
-                    data={data}
-                    margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
+                    data={processedPnLData}
+                    margin={{ top: 5, right: 0, left: -20, bottom: 0 }}
                   >
                     <defs>
                       <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
@@ -200,6 +420,10 @@ export function EquityChart({ data, allData, dateRange, onDateRangeChange, class
                       <linearGradient id="lossGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
                         <stop offset="100%" stopColor="#b91c1c" stopOpacity={1} />
+                      </linearGradient>
+                      <linearGradient id="majorLossGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#d97706" stopOpacity={1} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
@@ -220,15 +444,23 @@ export function EquityChart({ data, allData, dateRange, onDateRangeChange, class
                       axisLine={false}
                       tickLine={false}
                       tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                      tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => {
+                        if (currentPnlViewMode === 'log') {
+                          return value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1);
+                        }
+                        return tickFormatter(value);
+                      }}
                     />
                     <Tooltip content={<PnLTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
                     <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.3} />
-                    <Bar dataKey="pnl" radius={[4, 4, 4, 4]} maxBarSize={50}>
-                      {data.map((entry, index) => (
+                    <Bar dataKey={currentPnlViewMode === 'raw' ? 'pnl' : 'processedPnL'} radius={[4, 4, 4, 4]} maxBarSize={50}>
+                      {processedPnLData.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.pnl >= 0 ? "url(#profitGradient)" : "url(#lossGradient)"}
+                          fill={
+                            entry.isMajorLoss ? "url(#majorLossGradient)" :
+                            entry.pnl >= 0 ? "url(#profitGradient)" : "url(#lossGradient)"
+                          }
                           className="transition-all duration-300 hover:opacity-80"
                         />
                       ))}

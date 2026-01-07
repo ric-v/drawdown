@@ -18,8 +18,8 @@ Complete setup instructions for the Drawdown Portfolio Tracker.
 ### Clone and Install
 
 ```bash
-git clone <your-repo-url>
-cd daily-portfolio-tracker
+git clone https://github.com/ric-v/drawdown.git
+cd drawdown
 npm install
 ```
 
@@ -160,8 +160,17 @@ Restart the development server after adding variables.
 
 ---
 
+## Security Notes
+
+- **AUTH_SECRET**: Generate with `openssl rand -base64 32`. Change for each deployment.
+- **OAuth Tokens**: Automatically refreshed every hour. Access tokens expire after 1 hour, refresh tokens are longer-lived.
+- **Session**: JWT-based, expires after 30 days of inactivity.
+- **Environment Variables**: Never commit `.env.local` to version control.
+- **Production**: Always use HTTPS for production deployments.
+
+---
+
 ## Next Steps
 
 - [Deploy to Production](./DEPLOYMENT.md)
-- [Review Security Settings](./SECURITY.md)
-- [Learn How to Use the App](./USER_GUIDE.md)
+- [Learn How to Use the App](./FEATURES.md)

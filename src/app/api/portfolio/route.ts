@@ -3,6 +3,7 @@ import { auth } from '@/config/auth';
 import { DailyPnL, PortfolioStats, EquityPoint } from '@/types/trading';
 import * as GoogleDrive from '@/lib/google-drive';
 import * as OneDrive from '@/lib/onedrive';
+import { getCachedPortfolio, setCachedPortfolio } from '@/lib/local-cache';
 
 interface PortfolioData {
   dailyPnL: DailyPnL[];

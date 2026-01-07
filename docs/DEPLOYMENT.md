@@ -1,203 +1,223 @@
-# Drawdown
+# 🚀 Deployment Guide
 
-A professional trading portfolio tracker with real-time P&L analytics, built with Next.js and deployed on Vercel.
+Complete deployment instructions for production.
 
-## Features
+## Prerequisites
 
-- 📊 Real-time portfolio tracking
-- 💰 P&L calculations and analytics
-- 📈 Equity curve visualization
-- 🎯 Win rate and performance metrics
-- 💾 Persistent data storage
-- 🔄 Daily updates capability
+- Node.js 18+
+- Git repository (GitHub)
+- Vercel or Azure account
+- OAuth credentials (Google Cloud, Microsoft Azure)
 
-## Getting Started
+---
 
-### Prerequisites
+## Vercel Deployment (Recommended)
 
-- Node.js 18+ installed
-- npm or yarn package manager
-- Vercel account (for deployment)
+### 1. Push to GitHub
 
-### Local Development
-
-1. Clone the repository:
 ```bash
-git clone <your-repo-url>
-cd daily-portfolio-tracker
+git add .
+git commit -m "Ready for deployment"
+git push origin main
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+### 2. Deploy via Vercel Dashboard
 
-3. Run the development server:
-```bash
-npm run dev
-```
+1. Go to [Vercel Dashboard](https://vercel.com)
+2. Click "Add New Project"
+3. Import your GitHub repository
+4. Configure environment variables:
+   ```
+   AUTH_SECRET=<generate with: openssl rand -base64 32>
+   AUTH_URL=https://your-domain.vercel.app
+   AUTH_GOOGLE_ID=<from Google Cloud>
+   AUTH_GOOGLE_SECRET=<from Google Cloud>
+   AUTH_MICROSOFT_ENTRA_ID_ID=<optional>
+   AUTH_MICROSOFT_ENTRA_ID_SECRET=<optional>
+   AUTH_MICROSOFT_ENTRA_ID_TENANT_ID=common
+   ```
+5. Click "Deploy"
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+### 3. Custom Domain (Optional)
 
-## Deployment to Vercel
+1. In Vercel project settings
+2. Go to "Domains"
+3. Add your custom domain
+4. Update DNS records as instructed
 
-### Option 1: Deploy via Vercel Dashboard
+### 4. Deploy via CLI
 
-1. Push your code to GitHub/GitLab/Bitbucket
-2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-3. Click "Add New Project"
-4. Import your repository
-5. Vercel will auto-detect Next.js and configure build settings
-6. Click "Deploy"
-
-### Option 2: Deploy via Vercel CLI
-
-1. Install Vercel CLI:
 ```bash
 npm install -g vercel
-```
-
-2. Login to Vercel:
-```bash
 vercel login
-```
-
-3. Deploy:
-```bash
-vercel
-```
-
-4. For production deployment:
-```bash
 vercel --prod
 ```
 
-## Data Persistence
+---
 
-### How Data is Stored
+## Azure Static Web Apps Deployment
 
-The application uses a JSON file-based storage system located in the `data/` directory:
-- **Location**: `data/portfolio-data.json`
-- **Structure**:
-  ```json
-  {
-    "transactions": [],
-    "initialCapital": 100000,
-    "lastUpdated": null
-  }
-  ```
+### 1. Create Azure Resource Group
 
-### Important Notes on Vercel Deployment
-
-⚠️ **Vercel's filesystem is read-only in production**. This means:
-- The JSON file approach works for local development
-- For production on Vercel, you need a database solution
-
-### Recommended Database Solutions for Production
-
-1. **Vercel Postgres** (Recommended)
-   - Native integration with Vercel
-   - Serverless SQL database
-   - Free tier available
-
-2. **Vercel KV** (Redis)
-   - Key-value store
-   - Perfect for simple data structures
-   - Fast and scalable
-
-3. **MongoDB Atlas**
-   - NoSQL database
-   - Free tier available
-   - Easy JSON-like documents
-
-4. **Supabase**
-   - Open-source Firebase alternative
-   - PostgreSQL database
-   - Free tier available
-
-### Migrating to a Database (Example with Vercel Postgres)
-
-1. Install Vercel Postgres package:
 ```bash
-npm install @vercel/postgres
+az group create --name drawdown-rg --location eastus
 ```
 
-2. Set up database in Vercel Dashboard:
-   - Go to your project
-   - Navigate to "Storage"
-   - Create a new Postgres database
+### 2. Create Static Web App
 
-3. Update the API route to use Postgres instead of file system
-
-## API Endpoints
-
-### GET /api/portfolio
-Retrieve all portfolio data including transactions, stats, and equity curve.
-
-**Response:**
-```json
-{
-  "transactions": [...],
-  "stats": {...},
-  "equityData": [...],
-  "initialCapital": 100000,
-  "lastUpdated": "2024-12-11T..."
-}
+```bash
+az staticwebapp create \
+  --name drawdown \
+  --resource-group drawdown-rg \
+  --location eastus \
+  --source https://github.com/YOUR_USERNAME/drawdown \
+  --branch main \
+  --login-with-github
 ```
 
-### POST /api/portfolio
-Add a new transaction.
+### 3. Configure Environment Variables
 
-**Request Body:**
-```json
-{
-  "date": "2024-12-11",
-  "symbol": "AAPL",
-  "type": "BUY",
-  "quantity": 100,
-  "price": 182.50,
-  "totalValue": 18250,
-  "pnl": 270,
-  "pnlPercentage": 1.48
-}
-```
+In Azure Portal:
+1. Go to your Static Web App
+2. Settings → Configuration
+3. Add application settings:
+   ```
+   AUTH_SECRET
+   AUTH_URL=https://your-app.azurestaticapps.net
+   AUTH_GOOGLE_ID
+   AUTH_GOOGLE_SECRET
+   AUTH_MICROSOFT_ENTRA_ID_ID
+   AUTH_MICROSOFT_ENTRA_ID_SECRET
+   AUTH_MICROSOFT_ENTRA_ID_TENANT_ID
+   ```
 
-### DELETE /api/portfolio
-Clear all transactions.
+---
+
+## Database Configuration
+
+### Option 1: Vercel Postgres (Recommended)
+
+1. In Vercel dashboard, go to **Storage**
+2. Create new **Postgres** database
+3. Copy connection string
+4. Set `DATABASE_URL` environment variable
+
+### Option 2: MongoDB Atlas
+
+1. Create account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create cluster
+3. Get connection string
+4. Set `MONGODB_URI` environment variable
+
+### Option 3: Supabase
+
+1. Create account at [Supabase](https://supabase.com)
+2. Create new project
+3. Get PostgreSQL connection string
+4. Set `DATABASE_URL` environment variable
+
+---
 
 ## Environment Variables
 
-No environment variables are required for basic operation. If you integrate a database, you'll need to add:
+Required for production:
 
 ```env
-# Example for Vercel Postgres
-POSTGRES_URL=
-POSTGRES_PRISMA_URL=
-POSTGRES_URL_NON_POOLING=
-POSTGRES_USER=
-POSTGRES_HOST=
-POSTGRES_PASSWORD=
-POSTGRES_DATABASE=
+# Authentication
+AUTH_SECRET=<32-char random string from: openssl rand -base64 32>
+AUTH_URL=https://your-domain.com
+
+# Google OAuth (Required)
+AUTH_GOOGLE_ID=<from Google Cloud Console>
+AUTH_GOOGLE_SECRET=<from Google Cloud Console>
+
+# Microsoft OAuth (Optional)
+AUTH_MICROSOFT_ENTRA_ID_ID=<from Azure Portal>
+AUTH_MICROSOFT_ENTRA_ID_SECRET=<from Azure Portal>
+AUTH_MICROSOFT_ENTRA_ID_TENANT_ID=common
+
+# Database (Optional - local storage works without)
+DATABASE_URL=<database connection string>
 ```
 
-## Project Structure
+---
 
+## Pre-Deployment Checklist
+
+- ✅ All secrets added to environment variables
+- ✅ OAuth redirect URIs updated in provider consoles
+- ✅ Build completes without errors (`npm run build`)
+- ✅ Tests pass (`npm test`)
+- ✅ No TypeScript errors (`npm run type-check`)
+- ✅ Linting passes (`npm run lint`)
+
+---
+
+## Testing Build Locally
+
+```bash
+# Production build
+npm run build
+
+# Test production build locally
+npm run start
+
+# Open http://localhost:3000
 ```
-daily-portfolio-tracker/
-├── app/
-│   ├── api/
-│   │   └── portfolio/
-│   │       └── route.ts          # API endpoints
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx                   # Main dashboard
-├── components/
-│   ├── equity-chart.tsx           # Equity curve chart
-│   ├── kpi-card.tsx               # KPI display cards
-│   ├── transaction-table.tsx      # Transaction history
-│   └── ui/
-│       └── card.tsx               # Base card component
-├── data/
+
+---
+
+## Post-Deployment
+
+### Verify Deployment
+
+1. Visit your deployed URL
+2. Test OAuth login with both providers
+3. Add a transaction to verify data persistence
+4. Check browser console for errors
+
+### Monitor Performance
+
+- Vercel: Dashboard → Analytics
+- Azure: Portal → Application Insights
+- Next.js: use `@vercel/analytics` (included)
+
+### Common Issues
+
+**Blank page after login:**
+- Check environment variables are set correctly
+- Clear browser cache and cookies
+- Check browser console for errors
+
+**OAuth login fails:**
+- Verify redirect URIs match deployment domain
+- Check OAuth credentials in environment variables
+- Ensure provider APIs are enabled
+
+**Data not persisting:**
+- If no database configured, data stored locally (development only)
+- For production, configure database in environment variables
+
+---
+
+## Rollback
+
+### Vercel
+
+1. Go to Deployments tab
+2. Find previous deployment
+3. Click "Promote to Production"
+
+### Azure
+
+1. Go to Static Web App
+2. Deployments section
+3. Select previous deployment
+4. Click "Activate"
+
+---
+
+**Last updated**: January 6, 2026
 │   └── portfolio-data.json        # Data storage (local only)
 ├── lib/
 │   ├── mock-data.ts               # Mock data generators

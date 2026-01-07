@@ -5,6 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * @deprecated Use formatCurrency from @/lib/utils/format-settings instead for settings-aware formatting
+ */
 export function formatCurrency(amount: number, withSign: boolean = false): string {
   const formatted = `₹${Math.abs(amount).toLocaleString('en-IN', { 
     minimumFractionDigits: 2, 
@@ -15,6 +18,9 @@ export function formatCurrency(amount: number, withSign: boolean = false): strin
   return amount >= 0 ? `+${formatted}` : `-${formatted}`;
 }
 
+/**
+ * @deprecated Use formatPercentage from @/lib/utils/format-settings instead for settings-aware formatting
+ */
 export function formatPercentage(value: number, withSign: boolean = false): string {
   const formatted = `${Math.abs(value).toFixed(2)}%`;
   

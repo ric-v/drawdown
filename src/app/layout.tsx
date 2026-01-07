@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { Gantari } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
+import { SettingsProvider } from "@/hooks/use-settings";
 import { auth } from "@/config/auth";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { Analytics } from "@vercel/analytics/next"
-import { headers } from "next/headers";
-import { isPublicRoute } from "@/lib/is-public-route";
 
 const gantari = Gantari({
   subsets: ["latin"],
@@ -31,18 +30,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const headersList = await headers();
-  const pathname = headersList.get('x-pathname') || '';
-  
-  // Check if current route is public
-  const isPublic = isPublicRoute(pathname);
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${gantari.variable} font-sans antialiased`}>
+    <html lang="en" suppressHydrationWarning className="h-full">
+      <body className={`${gantari.variable} font-sans antialiased h-full flex flex-col`}>
         <ThemeProvider>
           <SessionProvider>
-            {session || isPublic ? children : <LoginScreen />}
+            <SettingsProvider>
+              {session ? children : <LoginScreen />}
+            </SettingsProvider>
           </SessionProvider>
         </ThemeProvider>
         <Analytics />

@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn, formatPercentage, getColorClass } from '@/lib/utils/utils';
+import { cn, getColorClass } from '@/lib/utils/utils';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useSettings } from '@/hooks/use-settings';
+import { formatCurrency, formatPercentage } from '@/lib/utils/format-settings';
 
 interface KPICardProps {
   title: string;
@@ -21,6 +23,7 @@ export function KPICard({
   isPercentage = false,
   numericValue,
 }: KPICardProps) {
+  const { settings } = useSettings();
   // Determine numeric value for color coding
   const valueForColor = numericValue ?? (typeof value === 'number' ? value : 0);
 
@@ -29,12 +32,6 @@ export function KPICard({
   // Calm red/green palette for profit/loss
   const trendColor = trend === 'up' ? 'text-emerald-600 dark:text-emerald-400' : trend === 'down' ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400 dark:text-gray-500';
   const bgColor = trend === 'up' ? 'bg-emerald-50 dark:bg-emerald-500/10' : trend === 'down' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-gray-50 dark:bg-gray-500/10';
-
-  const formatINR = (amount: number, withSign: boolean = false) => {
-    const formatted = `₹${Math.abs(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (!withSign) return formatted;
-    return amount >= 0 ? `+${formatted}` : `-${formatted}`;
-  };
 
   return (
     <Card className="border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl hover:shadow-xl hover:scale-[1.02] transition-all duration-300 ease-out rounded-2xl overflow-hidden">
@@ -55,9 +52,9 @@ export function KPICard({
           (isCurrency || isPercentage) && getColorClass(valueForColor)
         )}>
           {typeof value === 'string' ? value : (
-            isCurrency ? formatINR(value, true) :
-              isPercentage ? formatPercentage(value, true) :
-                value.toLocaleString()
+            isCurrency ? `${value >= 0 ? '+' : '-'}${formatCurrency(Math.abs(value), settings)}` :
+              isPercentage ? `${value >= 0 ? '+' : ''}${formatPercentage(Math.abs(value), settings, { asDecimal: true })}%` :
+                (settings ? Math.abs(value).toLocaleString(settings.numberFormat === 'indian' ? 'en-IN' : 'en-US') : value.toLocaleString())
           )}
         </div>
         {subtitle && (

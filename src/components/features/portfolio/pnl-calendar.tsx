@@ -22,14 +22,60 @@ import {
 } from "@/components/ui/tooltip"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { cn } from "@/lib/utils/utils"
+import { useSettings } from '@/hooks/use-settings';
+import { formatCurrency } from '@/lib/utils/format-settings';
+import { formatDate } from '@/lib/utils/format-settings';
 
 interface PnLCalendarProps {
   data: DailyPnL[];
   className?: string;
   year?: number; // Optional year to force display, otherwise defaults to usually last year or derived from data
+  // Trader cockpit features
+  onDayClick?: (day: DailyPnL | null, date: Date) => void;
+  showWeeklySummary?: boolean;
 }
 
-export function PnLCalendar({ data, className, year }: PnLCalendarProps) {
+export function PnLCalendar({ data, className, year, onDayClick, showWeeklySummary = true }: PnLCalendarProps) {
+  const { settings } = useSettings();
+  
+  // Weekly summary calculations
+  const weeklyData = useMemo(() => {
+    const weeks = new Map<string, {
+      weekStart: Date;
+      weekEnd: Date;
+      totalPnL: number;
+      winDays: number;
+      lossDays: number;
+      maxDD: number;
+      trades: DailyPnL[];
+    }>();
+    
+    data.forEach(entry => {
+      const entryDate = new Date(entry.date);
+      const weekStart = startOfWeek(entryDate, { weekStartsOn: 1 });
+      const weekKey = format(weekStart, 'yyyy-MM-dd');
+      
+      if (!weeks.has(weekKey)) {
+        weeks.set(weekKey, {
+          weekStart,
+          weekEnd: endOfWeek(entryDate, { weekStartsOn: 1 }),
+          totalPnL: 0,
+          winDays: 0,
+          lossDays: 0,
+          maxDD: 0,
+          trades: []
+        });
+      }
+      
+      const week = weeks.get(weekKey)!;
+      week.totalPnL += entry.pnl;
+      week.trades.push(entry);
+      if (entry.pnl > 0) week.winDays++;
+      if (entry.pnl < 0) week.lossDays++;
+    });
+    
+    return weeks;
+  }, [data]);
   // Always use the last 12 months ending today
   const { startDate, endDate, months } = useMemo(() => {
     const today = new Date();
@@ -83,28 +129,36 @@ export function PnLCalendar({ data, className, year }: PnLCalendarProps) {
   }, [data]);
 
   const getColorClass = (pnl: number | undefined) => {
-    if (pnl === undefined || pnl === 0) return 'bg-gray-100 dark:bg-muted/40';
+    if (pnl === undefined || pnl === 0) return 'bg-gray-100 dark:bg-muted/40 hover:bg-gray-200 dark:hover:bg-muted/60';
 
     if (pnl > 0) {
-      if (!maxProfit) return 'bg-emerald-400 dark:bg-emerald-500';
+      if (!maxProfit) return 'bg-emerald-400 dark:bg-emerald-500 hover:bg-emerald-500 dark:hover:bg-emerald-400';
       const intensity = pnl / maxProfit;
-      // Light mode: subtle progression (200-500)
-      // Dark mode: current "glow" style
-      if (intensity < 0.25) return 'bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-500';
-      if (intensity < 0.5) return 'bg-emerald-300 dark:bg-emerald-700/60';
-      if (intensity < 0.75) return 'bg-emerald-400 dark:bg-emerald-600';
-      return 'bg-emerald-500 dark:bg-emerald-500';
+      // Enhanced with hover states for interactivity
+      if (intensity < 0.25) return 'bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-500 hover:bg-emerald-300 dark:hover:bg-emerald-800/60';
+      if (intensity < 0.5) return 'bg-emerald-300 dark:bg-emerald-700/60 hover:bg-emerald-400 dark:hover:bg-emerald-600/80';
+      if (intensity < 0.75) return 'bg-emerald-400 dark:bg-emerald-600 hover:bg-emerald-500 dark:hover:bg-emerald-500';
+      return 'bg-emerald-500 dark:bg-emerald-500 hover:bg-emerald-600 dark:hover:bg-emerald-400';
     } else {
       const absPnl = Math.abs(pnl);
-      if (!maxLoss) return 'bg-red-400 dark:bg-red-500';
+      if (!maxLoss) return 'bg-red-400 dark:bg-red-500 hover:bg-red-500 dark:hover:bg-red-400';
       const intensity = absPnl / maxLoss;
-      // Light mode: subtle progression (200-500)
-      // Dark mode: current "glow" style 
-      if (intensity < 0.25) return 'bg-red-200 dark:bg-red-900/40 dark:text-red-500';
-      if (intensity < 0.5) return 'bg-red-300 dark:bg-red-700/60';
-      if (intensity < 0.75) return 'bg-red-400 dark:bg-red-600';
-      return 'bg-red-500 dark:bg-red-500';
+      // Enhanced with hover states for interactivity
+      if (intensity < 0.25) return 'bg-red-200 dark:bg-red-900/40 dark:text-red-500 hover:bg-red-300 dark:hover:bg-red-800/60';
+      if (intensity < 0.5) return 'bg-red-300 dark:bg-red-700/60 hover:bg-red-400 dark:hover:bg-red-600/80';
+      if (intensity < 0.75) return 'bg-red-400 dark:bg-red-600 hover:bg-red-500 dark:hover:bg-red-500';
+      return 'bg-red-500 dark:bg-red-500 hover:bg-red-600 dark:hover:bg-red-400';
     }
+  };
+  
+  const handleDayClick = (date: Date) => {
+    if (!onDayClick) return;
+    
+    const dayData = data.find(entry => 
+      isSameDay(new Date(entry.date), date)
+    );
+    
+    onDayClick(dayData || null, date);
   };
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -192,21 +246,39 @@ export function PnLCalendar({ data, className, year }: PnLCalendarProps) {
                           <TooltipProvider key={dateKey}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div
+                                <button
+                                  onClick={() => handleDayClick(day)}
                                   className={cn(
-                                    "w-3 h-3 rounded-[1px] transition-colors", // slightly tighter radius
-                                    getColorClass(pnl)
+                                    "w-3 h-3 rounded-[1px] transition-all duration-200 cursor-pointer transform hover:scale-110 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-offset-1", 
+                                    getColorClass(pnl),
+                                    onDayClick ? "hover:shadow-sm" : "cursor-default"
                                   )}
+                                  disabled={!onDayClick}
                                 />
                               </TooltipTrigger>
                               <TooltipContent>
-                                <div className="text-xs">
-                                  <p className="font-semibold">{format(day, 'MMM dd, yyyy')}</p>
-                                  <p className={cn(
-                                    pnl && pnl > 0 ? "text-emerald-500" : pnl && pnl < 0 ? "text-red-500" : "text-muted-foreground"
-                                  )}>
-                                    {pnl ? (pnl > 0 ? '+' : '') + pnl.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) : 'No Activity'}
-                                  </p>
+                                <div className="text-xs space-y-1 min-w-[180px]">
+                                  <p className="font-semibold text-center">{formatDate(day, settings)}</p>
+                                  <div className="border-t pt-1">
+                                    <p className={cn(
+                                      "font-medium text-center",
+                                      pnl && pnl > 0 ? "text-emerald-500" : pnl && pnl < 0 ? "text-red-500" : "text-muted-foreground"
+                                    )}>
+                                      {pnl ? (pnl > 0 ? '+' : '') + formatCurrency(Math.abs(pnl), settings) : 'No Activity'}
+                                    </p>
+                                    {pnl && (
+                                      <p className="text-muted-foreground text-center text-[10px]">
+                                        {Math.abs(pnl) > maxProfit * 0.5 ? '🎯 Big win!' : 
+                                         Math.abs(pnl) > maxLoss * 0.5 ? '⚠️ Major loss' :
+                                         pnl > 0 ? '✅ Positive day' : '❌ Loss day'}
+                                      </p>
+                                    )}
+                                    {onDayClick && (
+                                      <p className="text-[10px] text-blue-400 text-center mt-1 font-medium">
+                                        📊 Click to analyze
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               </TooltipContent>
                             </Tooltip>

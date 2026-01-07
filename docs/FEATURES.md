@@ -1,103 +1,170 @@
-# ✨ Advanced Features
+# ✨ Features Guide
 
-Advanced functionality and integrations for the Drawdown Portfolio Tracker.
+Complete feature documentation for Drawdown portfolio tracker.
+
+## Core Features
+
+### 📊 KPI Dashboard
+
+Real-time portfolio performance metrics displayed as interactive cards:
+
+- **Total P&L** - Overall profit/loss with percentage returns
+- **Win Rate** - Percentage of profitable trading days
+- **Average Win/Loss** - Mean profit per profitable day vs. mean loss
+- **Current Equity** - Present portfolio value
+- **Max Drawdown** - Largest peak-to-trough decline
+- **Profit Factor** - Ratio of gross profit to gross loss
+- **Expectancy** - Average profit/loss per trade
+- **Current Streak** - Consecutive winning or losing days
+
+**Color Coding:**
+- 🟢 Emerald Green: Positive values
+- 🔴 Rose Red: Negative values
+- ⚪ Gray: Neutral values
+
+### 📈 Equity Curve Chart
+
+Interactive chart visualization powered by Recharts:
+
+- **Real-time Updates**: Automatically reflects new transactions
+- **Hover Tooltips**: Detailed P&L information on hover
+- **Responsive Design**: Adapts to all screen sizes
+- **Gradient Fill**: Professional Bloomberg-style appearance
+
+### 📋 Transaction Management
+
+Comprehensive transaction tracking and editing:
+
+- **Add Transactions**: Quick entry of new daily P&L entries
+- **Edit Transactions**: Modify existing entries
+- **Delete Transactions**: Remove incorrect entries
+- **Color-coded**: Green for wins, red for losses
+
+**Supported Fields:**
+- Date (YYYY-MM-DD format)
+- P&L Amount (in INR)
+- Timestamps
+
+### 💰 Fund Management
+
+Track capital deposits and withdrawals:
+
+- **Add Deposits**: Record capital additions
+- **Add Withdrawals**: Record capital removals
+- **Fund History**: Complete fund flow tracking
+- **Equity Impact**: Affects initial capital baseline
+
+### 📅 Performance Calendar
+
+Visual daily performance representation:
+
+- **Heatmap**: Color-coded profitable vs. losing days
+- **Date Selection**: Click dates to view details
+- **Month Navigation**: Browse different time periods
+- **Summary Statistics**: Monthly P&L totals
+
+### 🔐 Authentication & Security
+
+Professional OAuth implementation:
+
+**Supported Providers:**
+- ✅ Google OAuth 2.0
+- ✅ Microsoft Entra ID (Azure AD)
+
+**Features:**
+- Secure session management (NextAuth.js)
+- Automatic token refresh
+- CSRF protection
+- Secure cookie handling
+
+### ☁️ Cloud Storage Integration
+
+**Google Drive Integration:**
+- Store trading data files in Google Drive
+- Automatic backups and versioning
+- Cross-device access
+- Data ownership and privacy
+
+**Microsoft OneDrive Integration:**
+- Alternative cloud storage option
+- SharePoint integration (optional)
+
+### 📱 Responsive Design
+
+Optimized for all devices:
+
+- **Desktop**: Full-featured interface
+- **Tablet**: Optimized layout with touch support
+- **Mobile**: Simplified interface with essential features
+- **Dark Mode**: Default theme (Bloomberg terminal aesthetic)
+
+## Advanced Features
+
+### Performance Metrics
+
+**Calculated Metrics:**
+
+- Win Rate (%) = (profitDays / totalDays) * 100
+- Profit Factor = grossProfit / |grossLoss|
+- Expectancy = totalPnL / totalDays
+- Max Drawdown = (peakEquity - troughEquity) / peakEquity
+- Current Streak = consecutive winning/losing days
+
+### API Endpoints
+
+**Portfolio Operations:**
+- `GET /api/portfolio` - Fetch all portfolio data
+- `POST /api/portfolio` - Add new transaction
+- `DELETE /api/portfolio` - Clear all transactions
+- `PUT /api/portfolio/[id]` - Update transaction
+
+**Equity Curve:**
+- `GET /api/portfolio/equity` - Get equity points
+
+**Fund Management:**
+- `GET /api/portfolio/funds` - Get fund transactions
+- `POST /api/portfolio/funds` - Add fund transaction
+
+## User Management
+
+**User Profile:**
+- Display name
+- Email address
+- Profile picture
+- Secure account settings
+
+**Session Management:**
+- Automatic logout after 30 days of inactivity
+- Multi-device session tracking
+- Sign out functionality
+
+## How to Use
+
+### Adding Daily P&L
+
+1. Navigate to the dashboard
+2. Click "Add Transaction"
+3. Enter date, P&L amount
+4. Click "Save"
+5. Chart updates automatically
+
+### Fund Management
+
+1. Click "Fund Management" section
+2. Add deposits when capital is added
+3. Add withdrawals when capital is removed
+4. Maintains accurate equity calculations
+
+### Viewing Performance
+
+1. Dashboard KPIs update in real-time
+2. Equity curve shows cumulative performance
+3. Calendar view shows daily wins/losses
+4. Hover on chart for detailed information
 
 ---
 
-## Google Drive Integration
-
-### Overview
-
-The application can use Google Drive as storage for your trading data files, offering an alternative to traditional databases.
-
-### Why Google Drive?
-
-✅ **Zero Database Costs**: No need for paid database services
-✅ **Data Ownership**: Files stored in your Google Drive
-✅ **Easy Backup**: Built-in Google Drive backup and versioning
-✅ **Cross-Platform**: Access from any device
-✅ **Privacy**: Data stays in your personal cloud storage
-
-### Configuration Status
-
-The Google OAuth is already configured with the correct scope:
-
-```typescript
-scope: "openid email profile https://www.googleapis.com/auth/drive.file"
-```
-
-**Key Points:**
-- `drive.file` scope: Only accesses files created by this app (not all your files)
-- `offline` access: Enables refresh tokens for long-lived sessions
-- `consent` prompt: Users see and approve permissions
-
----
-
-## Implementation Guide
-
-### 1. Install Google APIs Client
-
-```bash
-npm install googleapis
-```
-
-### 2. Create Drive Utility Functions
-
-Create `lib/google-drive.ts`:
-
-```typescript
-import { google } from 'googleapis'
-
-export async function createTradeFile(
-  accessToken: string,
-  fileName: string,
-  fileContent: object
-) {
-  const drive = google.drive({
-    version: 'v3',
-    auth: new google.auth.OAuth2Client({
-      credentials: { access_token: accessToken }
-    })
-  })
-
-  const file = new (require('stream').Readable)()
-  file.push(JSON.stringify(fileContent))
-  file.push(null)
-
-  const response = await drive.files.create({
-    requestBody: {
-      name: fileName,
-      mimeType: 'application/json'
-    },
-    media: {
-      mimeType: 'application/json',
-      body: file
-    }
-  })
-
-  return response.data.id
-}
-
-export async function readTradeFile(
-  accessToken: string,
-  fileId: string
-) {
-  const drive = google.drive({
-    version: 'v3',
-    auth: new google.auth.OAuth2Client({
-      credentials: { access_token: accessToken }
-    })
-  })
-
-  const response = await drive.files.get({
-    fileId,
-    alt: 'media'
-  })
-
-  return response.data
-}
-
-export async function updateTradeFile(
+**Last updated**: January 6, 2026
   accessToken: string,
   fileId: string,
   fileContent: object

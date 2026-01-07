@@ -2,10 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FundTransaction } from '@/types/trading';
-import { format } from 'date-fns';
-import { TrendingUp, TrendingDown, History, MoreHorizontal } from 'lucide-react';
+import { TrendingUp, TrendingDown, History, MoreHorizontal, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { useState, useEffect, useMemo } from 'react';
+import { useSettings } from '@/hooks/use-settings';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { formatCurrency } from '@/lib/utils/format-settings';
+import { FormattedDate } from '@/components/common/formatted-values';
+import { AddFundsForm } from './add-funds-form';
 
 import {
   Dialog,
@@ -37,7 +41,8 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useLocalStorage<number>('fund-history-items-per-page', 25);
+  const { settings } = useSettings();
 
   useEffect(() => {
     fetchTransactions();
@@ -97,7 +102,7 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
   };
 
   const formatINR = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrency(amount, settings);
   };
 
   const totalDeposits = transactions
@@ -120,7 +125,14 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  const latestTransaction = transactions[0];
+  const latestTransactions = transactions.slice(0, 5); // Show last 5 transactions on card
+
+  const handleFundsAdded = async () => {
+    await fetchTransactions();
+    if (onFundUpdate) {
+      onFundUpdate();
+    }
+  };
 
   return (
     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -131,11 +143,25 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
               <History className="w-4 h-4" />
               Fund History
             </CardTitle>
-            <DialogTrigger asChild>
-              <Button variant="ghost" className="text-sm text-blue-500 hover:text-blue-600">
-                Show All
-              </Button>
-            </DialogTrigger>
+            <div className="flex items-center gap-2">
+              <AddFundsForm
+                onFundsAdded={handleFundsAdded}
+                trigger={
+                  <Button
+                    variant="outline"
+                    className="h-9 bg-white/80 dark:bg-slate-900/60 border-gray-200 dark:border-slate-800 text-blue-600 dark:text-blue-300 px-3 rounded-lg shadow-none hover:bg-gray-100/80 dark:hover:bg-slate-800/80"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden md:inline font-medium text-sm ml-2">Add Funds</span>
+                  </Button>
+                }
+              />
+              <DialogTrigger asChild>
+                <Button variant="ghost" className="text-sm text-blue-500 hover:text-blue-600">
+                  Show All
+                </Button>
+              </DialogTrigger>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -152,41 +178,46 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
               </div>
             </div>
 
-            {/* Latest Transaction */}
-            {latestTransaction ? (
+            {/* Recent Transactions */}
+            {latestTransactions.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Latest Transaction</p>
-                <div
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "p-2 rounded-lg",
-                      latestTransaction.type === 'DEPOSIT'
-                        ? "bg-emerald-500/10 text-emerald-500"
-                        : "bg-red-500/10 text-red-500"
-                    )}>
-                      {latestTransaction.type === 'DEPOSIT' ? (
-                        <TrendingUp className="w-4 h-4" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4" />
-                      )}
+                <p className="text-xs text-muted-foreground">Recent Transactions</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {latestTransactions.map((transaction, index) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 border border-border/50"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn(
+                          "p-1.5 rounded-md",
+                          transaction.type === 'DEPOSIT'
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : "bg-red-500/10 text-red-500"
+                        )}>
+                          {transaction.type === 'DEPOSIT' ? (
+                            <TrendingUp className="w-3 h-3" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">
+                            {transaction.type === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            <FormattedDate date={transaction.date} />
+                          </p>
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "text-xs font-semibold",
+                        transaction.type === 'DEPOSIT' ? "text-emerald-500" : "text-red-500"
+                      )}>
+                        {transaction.type === 'DEPOSIT' ? '+' : '-'}{formatINR(transaction.amount)}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {latestTransaction.type === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(latestTransaction.date), 'MMM dd, yyyy')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={cn(
-                    "text-sm font-semibold",
-                    latestTransaction.type === 'DEPOSIT' ? "text-emerald-500" : "text-red-500"
-                  )}>
-                    {latestTransaction.type === 'DEPOSIT' ? '+' : '-'}{formatINR(latestTransaction.amount)}
-                  </div>
+                  ))}
                 </div>
               </div>
             ) : (
@@ -232,7 +263,7 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
               {currentTransactions.map((transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell>
-                    {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                    <FormattedDate date={transaction.date} />
                   </TableCell>
                   <TableCell>
                     <Badge variant={transaction.type === 'DEPOSIT' ? 'success' : 'destructive'}>

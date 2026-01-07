@@ -19,10 +19,10 @@ interface EditTransactionFormProps {
   entry: DailyPnL | null;
   isOpen: boolean;
   onClose: () => void;
-  onEntryUpdated: () => void;
+  onUpdate: (id: string, updates: Partial<DailyPnL>) => Promise<void>;
 }
 
-export function EditTransactionForm({ entry, isOpen, onClose, onEntryUpdated }: EditTransactionFormProps) {
+export function EditTransactionForm({ entry, isOpen, onClose, onUpdate }: EditTransactionFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     date: '',
@@ -36,8 +36,15 @@ export function EditTransactionForm({ entry, isOpen, onClose, onEntryUpdated }: 
       const formattedDate = date.toISOString().split('T')[0];
       setFormData({
         date: formattedDate,
-        pnl: entry.pnl.toString(),
+        pnl: (entry.pnl ?? 0).toString(),
         notes: entry.notes || '',
+      });
+    } else {
+      // Reset form when no entry
+      setFormData({
+        date: '',
+        pnl: '',
+        notes: '',
       });
     }
   }, [entry]);
@@ -56,24 +63,13 @@ export function EditTransactionForm({ entry, isOpen, onClose, onEntryUpdated }: 
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/portfolio/${entry.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: formData.date,
-          pnl: parseFloat(formData.pnl),
-          notes: formData.notes || undefined,
-        }),
+      await onUpdate(entry.id, {
+        date: new Date(formData.date),
+        pnl: parseFloat(formData.pnl),
+        notes: formData.notes || undefined,
       });
-
-      if (response.ok) {
-        onEntryUpdated();
-        onClose();
-      } else {
-        alert('Failed to update entry');
-      }
+      
+      onClose();
     } catch (error) {
       console.error('Error updating entry:', error);
       alert('Error updating entry');
