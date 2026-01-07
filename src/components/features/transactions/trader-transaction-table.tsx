@@ -300,8 +300,11 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
       <CardHeader className="p-4 md:p-6 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
-              📊 Trading Journal
+            <CardTitle className="text-xl font-bold tracking-tight flex items-center gap-2">
+              <span>📊</span>
+              <span className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">
+                Trading Journal
+              </span>
             </CardTitle>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {transactions.length} trading days • Pattern recognition over scrolling
@@ -331,7 +334,8 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-gray-200/60 dark:border-slate-800/60">
@@ -603,6 +607,201 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                   )}
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {viewMode === 'weekly' ? (
+                // Weekly Mobile Cards
+                weeklyGroups.slice(startIndex, endIndex).map((week, index) => (
+                  <div key={index} className="bg-white dark:bg-slate-800/50 border border-gray-200/60 dark:border-slate-700/60 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold text-sm">
+                          {format(week.weekStart, 'MMM d')} - {format(week.weekEnd, 'MMM d')}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {week.trades.length} days • {week.winDays}W-{week.lossDays}L
+                        </div>
+                      </div>
+                      <div className={cn("text-right")}>
+                        <div className={cn("font-bold text-base", getColorClass(week.totalPnL))}>
+                          {week.totalPnL >= 0 ? '+' : ''}<FormattedCurrency value={Math.abs(week.totalPnL)} />
+                        </div>
+                        <Badge variant={week.winRate >= 50 ? 'default' : 'destructive'} className="text-xs mt-1">
+                          {week.winRate.toFixed(0)}% Win
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-slate-700">
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Damage Efficiency</div>
+                        <div className={cn("font-bold text-sm", 
+                          week.damageEfficiency >= 2 ? 'text-emerald-600 dark:text-emerald-400' :
+                          week.damageEfficiency >= 1 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                        )}>
+                          {week.damageEfficiency === 999 ? '∞' : week.damageEfficiency.toFixed(1)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Best/Worst</div>
+                        <div className="space-y-0.5 text-xs">
+                          <div className="text-emerald-600 dark:text-emerald-400">
+                            +<FormattedCurrency value={week.bestDay} short />
+                          </div>
+                          <div className="text-red-600 dark:text-red-400">
+                            <FormattedCurrency value={week.worstDay} short />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : viewMode === 'monthly' ? (
+                // Monthly Mobile Cards
+                monthlyGroups.slice(startIndex, endIndex).map((month, index) => (
+                  <div key={index} className="bg-white dark:bg-slate-800/50 border border-gray-200/60 dark:border-slate-700/60 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold text-sm">
+                          {format(month.monthStart, 'MMMM yyyy')}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {month.tradingDays} days • {month.winDays}W-{month.lossDays}L
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={cn("font-bold text-base", getColorClass(month.totalPnL))}>
+                          {month.totalPnL >= 0 ? '+' : ''}<FormattedCurrency value={Math.abs(month.totalPnL)} />
+                        </div>
+                        <Badge variant={month.winRate >= 50 ? 'default' : 'destructive'} className="text-xs mt-1">
+                          {month.winRate.toFixed(0)}% Win
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-slate-700">
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Win Rate</div>
+                        <Badge variant={month.winRate >= 50 ? 'default' : 'destructive'} className="text-xs">
+                          {month.winRate.toFixed(0)}%
+                        </Badge>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Avg Daily</div>
+                        <div className="text-sm font-medium">
+                          <FormattedCurrency value={month.averageDaily} short />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                // Daily/Compressed Mobile Cards
+                sortedTransactions.slice(startIndex, endIndex).map((transaction) => (
+                  <div key={transaction.id} className="bg-white dark:bg-slate-800/50 border border-gray-200/60 dark:border-slate-700/60 rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="text-xs text-gray-500">
+                          <FormattedDate date={transaction.date} />
+                        </div>
+                        <div className={cn("text-lg font-bold mt-1", getColorClass(transaction.pnl))}>
+                          {transaction.pnl >= 0 ? (
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="h-4 w-4" />
+                              +<FormattedCurrency value={transaction.pnl} />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <TrendingDown className="h-4 w-4" />
+                              <FormattedCurrency value={transaction.pnl} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onEdit?.(transaction)}>
+                            <Edit2 className="mr-2 h-3 w-3" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => onDelete?.(transaction.id)}
+                            className="text-red-600 dark:text-red-400"
+                          >
+                            <Trash2 className="mr-2 h-3 w-3" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {viewMode === 'compressed' && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge 
+                          variant={Math.abs(transaction.pnl) > 5000 ? 'destructive' : Math.abs(transaction.pnl) > 2000 ? 'secondary' : 'outline'}
+                          className="text-xs"
+                        >
+                          {Math.abs(transaction.pnl) > 5000 ? '🔥 High Impact' : 
+                           Math.abs(transaction.pnl) > 2000 ? '⚡ Med Impact' : '📍 Low Impact'}
+                        </Badge>
+                        <div className="flex gap-1">
+                          {getMistakeIcons(transaction.notes || '').map((mistake, idx) => {
+                            const Icon = mistake.icon;
+                            return (
+                              <div key={idx} title={mistake.label} className="p-1 bg-amber-100 dark:bg-amber-900/20 rounded">
+                                <Icon className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {viewMode === 'daily' && (
+                      <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-700">
+                        <div className="flex flex-wrap gap-1.5">
+                          {['Revenge', 'Oversize', 'Late entry', 'Rule-followed'].map((tag) => {
+                            const loadingKey = `${transaction.id}-${tag}`;
+                            const isLoading = loadingTags.has(loadingKey);
+                            
+                            return (
+                              <button
+                                key={tag}
+                                onClick={() => toggleTag(transaction, tag)}
+                                disabled={!onUpdate || isLoading}
+                                className={cn(
+                                  "px-2 py-1 text-xs rounded-md border transition-all flex items-center gap-1",
+                                  onUpdate && !isLoading ? "cursor-pointer active:scale-95" : "cursor-not-allowed opacity-50",
+                                  transaction.notes?.toLowerCase().includes(tag.toLowerCase()) 
+                                    ? "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                                    : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-slate-600"
+                                )}
+                              >
+                                {isLoading ? (
+                                  <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  tag
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {transaction.notes?.trim() && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {transaction.notes}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Pagination */}

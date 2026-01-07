@@ -22,12 +22,12 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, stats, equityEditButton, refreshButton, addPnlButton }: AppLayoutProps) {
   return (
-    <div className="flex flex-col h-screen w-full bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-700">
+    <div className="flex flex-col h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50/20 to-purple-50/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-950/95 transition-colors duration-700">
       {/* Premium Header */}
-      <header className="sticky top-0 z-40 flex h-16 md:h-20 shrink-0 items-center justify-between gap-3 md:gap-6 border-b border-gray-200/60 dark:border-slate-800/60 px-4 md:px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl shadow-sm">
+      <header className="sticky top-0 z-40 flex h-16 md:h-20 shrink-0 items-center justify-between gap-3 md:gap-6 border-b border-gray-200/60 dark:border-slate-700/60 px-4 md:px-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl shadow-lg shadow-gray-200/50 dark:shadow-black/20">
         {/* Logo Section */}
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-blue-500/10 dark:from-blue-500/20 dark:via-purple-500/20 dark:to-blue-500/20 shadow-lg shadow-blue-500/10 dark:shadow-blue-500/20 ring-1 ring-blue-500/20 dark:ring-blue-500/30 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/20">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/15 via-purple-500/15 to-blue-500/15 dark:from-blue-500/25 dark:via-purple-500/25 dark:to-blue-500/25 shadow-xl shadow-blue-500/20 dark:shadow-blue-500/30 ring-1 ring-blue-500/30 dark:ring-blue-500/40 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/30 dark:hover:shadow-blue-500/40 hover:ring-blue-500/40 dark:hover:ring-blue-500/50">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -37,8 +37,8 @@ export function AppLayout({ children, stats, equityEditButton, refreshButton, ad
             />
           </div>
           <div>
-            <h1 className="font-bold text-base md:text-xl bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">Drawdown</h1>
-            <p className="hidden md:block text-[10px] font-medium text-gray-500 dark:text-gray-400">Portfolio Tracker</p>
+            <h1 className="font-bold text-base md:text-xl bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 dark:from-white dark:via-gray-200 dark:to-white bg-clip-text text-transparent tracking-tight">Drawdown</h1>
+            <p className="hidden md:block text-[10px] font-semibold text-gray-500 dark:text-gray-400 tracking-wider">Portfolio Tracker</p>
           </div>
         </div>
 
@@ -47,8 +47,8 @@ export function AppLayout({ children, stats, equityEditButton, refreshButton, ad
           {/* Stats Section - Premium Cards */}
           {stats && (
             <div className="hidden sm:flex items-center gap-2 md:gap-3">
-              <div className="group relative px-3 md:px-4 py-2 rounded-xl bg-gradient-to-br from-gray-50/80 to-gray-100/80 dark:from-slate-800/50 dark:to-slate-900/50 backdrop-blur-sm border border-gray-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300 hover:shadow-md">
-                <p className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">Equity</p>
+              <div className="group relative px-3 md:px-5 py-2.5 rounded-xl bg-gradient-to-br from-gray-50/95 to-gray-100/95 dark:from-slate-800/70 dark:to-slate-900/70 backdrop-blur-xl border border-gray-200/70 dark:border-slate-700/70 shadow-md shadow-gray-200/50 dark:shadow-black/20 transition-all duration-300 hover:shadow-lg hover:shadow-gray-300/60 dark:hover:shadow-black/40 hover:scale-[1.02] hover:border-gray-300/80 dark:hover:border-slate-600/80">
+                <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.12em] text-gray-600 dark:text-gray-400 mb-1">Equity</p>
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs md:text-base font-bold text-gray-900 dark:text-white">
                     <FormattedCurrency value={stats.currentEquity} short />
@@ -57,8 +57,8 @@ export function AppLayout({ children, stats, equityEditButton, refreshButton, ad
                 </div>
               </div>
               
-              <div className="px-3 md:px-4 py-2 rounded-xl bg-gradient-to-br from-gray-50/80 to-gray-100/80 dark:from-slate-800/50 dark:to-slate-900/50 backdrop-blur-sm border border-gray-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-300 hover:shadow-md">
-                <p className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">P&L</p>
+              <div className="px-3 md:px-5 py-2.5 rounded-xl bg-gradient-to-br from-gray-50/95 to-gray-100/95 dark:from-slate-800/70 dark:to-slate-900/70 backdrop-blur-xl border border-gray-200/70 dark:border-slate-700/70 shadow-md shadow-gray-200/50 dark:shadow-black/20 transition-all duration-300 hover:shadow-lg hover:shadow-gray-300/60 dark:hover:shadow-black/40 hover:scale-[1.02] hover:border-gray-300/80 dark:hover:border-slate-600/80">
+                <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.12em] text-gray-600 dark:text-gray-400 mb-1">P&L</p>
                 <div className="flex items-baseline gap-1.5">
                   <p className={cn(
                     'text-xs md:text-base font-bold transition-colors duration-300',
@@ -67,10 +67,10 @@ export function AppLayout({ children, stats, equityEditButton, refreshButton, ad
                     {stats.totalPnL >= 0 ? '+' : ''}<FormattedCurrency value={Math.abs(stats.totalPnL)} short />
                   </p>
                   <span className={cn(
-                    'text-[9px] md:text-[10px] font-semibold px-1.5 py-0.5 rounded-md',
+                    'text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm',
                     stats.totalPnL >= 0 
-                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                      : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'
+                      ? 'bg-emerald-100 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-rose-100 dark:bg-rose-500/25 text-rose-700 dark:text-rose-400'
                   )}>
                     <FormattedPercentage value={stats.totalPnLPercentage} />
                   </span>

@@ -31,12 +31,21 @@ export function CustomTabs({ items, value, onValueChange, className }: CustomTab
             onClick={() => onValueChange(item.id)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
               value === item.id
-                ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-md scale-[1.02]'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-900/50'
+                ? 'bg-white dark:bg-slate-900 shadow-md scale-[1.02]'
+                : 'hover:bg-white/50 dark:hover:bg-slate-900/50'
             }`}
           >
-            <Icon className="w-4 h-4" />
-            <span>{item.label}</span>
+            <Icon className={cn(
+              "w-4 h-4",
+              value === item.id
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-600 dark:text-gray-400"
+            )} />
+            <span className={cn(
+              value === item.id
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-600 dark:text-gray-400"
+            )}>{item.label}</span>
           </button>
         )
       })}

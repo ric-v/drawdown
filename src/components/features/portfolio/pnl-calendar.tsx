@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DailyPnL } from '@/types/trading';
 import {
   eachDayOfInterval,
@@ -14,6 +14,7 @@ import {
   endOfWeek,
   addDays,
 } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Tooltip,
   TooltipContent,
@@ -37,6 +38,8 @@ interface PnLCalendarProps {
 
 export function PnLCalendar({ data, className, year, onDayClick, showWeeklySummary = true }: PnLCalendarProps) {
   const { settings } = useSettings();
+  const isMobile = useIsMobile();
+  const [selectedQuarter, setSelectedQuarter] = useState<1 | 2 | 3 | 4>(4); // Default to Q4 (current quarter)
   
   // Weekly summary calculations
   const weeklyData = useMemo(() => {
@@ -107,6 +110,17 @@ export function PnLCalendar({ data, className, year, onDayClick, showWeeklySumma
     return { startDate: monthsData[0], endDate: end, months: monthsData };
   }, []);
 
+  // Split months into 4 groups of 3 consecutive months on mobile
+  const displayMonths = useMemo(() => {
+    if (!isMobile) return months;
+    
+    // Split the 12 months into 4 groups of 3 consecutive months
+    const startIndex = (selectedQuarter - 1) * 3;
+    const endIndex = startIndex + 3;
+    
+    return months.slice(startIndex, endIndex);
+  }, [months, selectedQuarter, isMobile]);
+
   const pnlMap = useMemo(() => {
     const map = new Map<string, number>();
     data.forEach(entry => {
@@ -170,11 +184,32 @@ export function PnLCalendar({ data, className, year, onDayClick, showWeeklySumma
   }, [months]); // Trigger when months data is ready
 
   const content = (
-    <div
-      ref={scrollContainerRef}
-      className="flex flex-col gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent w-full max-w-full relative"
-      style={{ scrollBehavior: 'smooth' }}
-    >
+    <div className="flex flex-col gap-3">
+      {/* Quarter Selector - Mobile Only */}
+      {isMobile && (
+        <div className="flex gap-2 justify-center mb-2">
+          {[1, 2, 3, 4].map((quarter) => (
+            <button
+              key={quarter}
+              onClick={() => setSelectedQuarter(quarter as 1 | 2 | 3 | 4)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+                selectedQuarter === quarter
+                  ? "bg-blue-500 text-white shadow-md"
+                  : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700"
+              )}
+            >
+              Q{quarter}
+            </button>
+          ))}
+        </div>
+      )}
+      
+      <div
+        ref={scrollContainerRef}
+        className="flex flex-col gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent w-full max-w-full relative"
+        style={{ scrollBehavior: 'smooth' }}
+      >
       <div className="flex gap-2 min-w-max px-1">
         {/* Weekday Labels Column - Sticky Left */}
         <div className="sticky left-0 bg-white dark:bg-card z-10 flex flex-col gap-1 text-[10px] text-muted-foreground pt-[20px] pr-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
@@ -190,7 +225,7 @@ export function PnLCalendar({ data, className, year, onDayClick, showWeeklySumma
 
         {/* Months Container */}
         <div className="flex gap-2">
-          {months.map((monthStart, mIndex) => {
+          {displayMonths.map((monthStart, mIndex) => {
             // Generate full weeks for this month
             // To align week rows, we need to know the Day of Week of the 1st
             // And pad the first week column with empty cells
@@ -307,6 +342,7 @@ export function PnLCalendar({ data, className, year, onDayClick, showWeeklySumma
           <div className="w-3 h-3 rounded-[1px] bg-emerald-500 dark:bg-emerald-500" />
         </div>
         <span>More</span>
+      </div>
       </div>
     </div>
   );
