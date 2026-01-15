@@ -3,9 +3,7 @@ import { Gantari } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SettingsProvider } from "@/hooks/use-settings";
-import { auth } from "@/config/auth";
 import { SessionProvider } from "@/components/auth/session-provider";
-import { LoginScreen } from "@/components/auth/login-screen";
 import { Analytics } from "@vercel/analytics/next"
 
 const gantari = Gantari({
@@ -29,15 +27,15 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-
+  // Root layout just provides the base HTML structure and providers
+  // Authentication is handled by individual route groups
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
       <body className={`${gantari.variable} font-sans antialiased h-full flex flex-col`}>
         <ThemeProvider>
           <SessionProvider>
             <SettingsProvider>
-              {session ? children : <LoginScreen />}
+              {children}
             </SettingsProvider>
           </SessionProvider>
         </ThemeProvider>
