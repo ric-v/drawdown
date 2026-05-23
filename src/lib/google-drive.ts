@@ -183,11 +183,11 @@ export async function savePortfolioData(
   accessToken: string,
   data: PortfolioData
 ): Promise<void> {
-  const fileId = await findPortfolioFile(accessToken)
+  const file = await findPortfolioFile(accessToken)
   
-  if (fileId) {
+  if (file && file.id) {
     try {
-      await updatePortfolioFile(accessToken, fileId, data)
+      await updatePortfolioFile(accessToken, file.id, data)
     } catch (error: any) {
       // If update fails due to file not found, create new file
       if (error.message.includes('File not found')) {
@@ -306,10 +306,10 @@ export async function writeSettingsData(
   accessToken: string,
   data: UserSettings
 ): Promise<void> {
-  const fileId = await findSettingsFile(accessToken)
+  const file = await findSettingsFile(accessToken)
   
-  if (fileId) {
-    await updateSettingsFile(accessToken, fileId, data)
+  if (file && file.id) {
+    await updateSettingsFile(accessToken, file.id, data)
   } else {
     await createSettingsFile(accessToken, data)
   }

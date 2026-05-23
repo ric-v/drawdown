@@ -35,8 +35,8 @@ export function SyncStatusIndicator() {
       "fixed bottom-4 right-4 px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm",
       "backdrop-blur-xl border transition-all duration-300",
       syncStatus === 'syncing' && "bg-blue-50/90 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300",
-      syncStatus === 'synced' && "bg-emerald-50/90 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300",
-      syncStatus === 'error' && "bg-rose-50/90 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300"
+      syncStatus === 'synced' && "bg-positive/10 border-positive/30 text-positive",
+      syncStatus === 'error' && "bg-negative/10 border-negative/30 text-negative"
     )}>
       {syncStatus === 'syncing' && (
         <>

@@ -29,7 +29,7 @@ export function formatPercentage(value: number, withSign: boolean = false): stri
 }
 
 export function getColorClass(value: number): string {
-  if (value > 0) return 'text-emerald-600 dark:text-emerald-400';
-  if (value < 0) return 'text-rose-600 dark:text-rose-400';
-  return 'text-gray-500 dark:text-gray-400';
+  if (value > 0) return 'text-positive';
+  if (value < 0) return 'text-negative';
+  return 'text-neutral';
 }

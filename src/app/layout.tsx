@@ -31,14 +31,21 @@ export default async function RootLayout({
   // Authentication is handled by individual route groups
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'||t==='system'){if(t==='system'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.classList.add(t);}else{var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.classList.add(d);}}catch(e){document.documentElement.classList.add(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}})();`,
+          }}
+        />
+      </head>
       <body className={`${gantari.variable} font-sans antialiased h-full flex flex-col`}>
-        <ThemeProvider>
-          <SessionProvider>
-            <SettingsProvider>
+        <SessionProvider>
+          <SettingsProvider>
+            <ThemeProvider>
               {children}
-            </SettingsProvider>
-          </SessionProvider>
-        </ThemeProvider>
+            </ThemeProvider>
+          </SettingsProvider>
+        </SessionProvider>
         <Analytics />
       </body>
     </html>

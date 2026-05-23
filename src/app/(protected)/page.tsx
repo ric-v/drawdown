@@ -1,22 +1,24 @@
 'use client';
 
-import { KPICard } from '@/components/features/portfolio/kpi-card';
+import { KPISummary } from '@/components/features/portfolio/kpi-summary';
+import { TraderCockpit } from '@/components/features/portfolio/trader-cockpit';
 import { EquityChart } from '@/components/features/portfolio/equity-chart';
+import { AIInsightsSection } from '@/components/features/ai-insights/ai-insights-section';
+import { redactSnapshot, type RawSnapshotInputs } from '@/lib/ai/redact';
+import type { InsightType } from '@/lib/ai/types';
 import { TraderTransactionTable } from '@/components/features/transactions/trader-transaction-table';
 import { AddTransactionForm } from '@/components/features/transactions/add-transaction-form';
 import { EditEquityForm } from '@/components/features/portfolio/edit-equity-form';
 import { EditTransactionForm } from '@/components/features/transactions/edit-transaction-form';
-import { AddFundsForm } from '@/components/features/funds/add-funds-form';
 import { FundHistory } from '@/components/features/funds/fund-history';
 import { AppLayout } from '@/components/layout/app-layout';
 import { DayAnalysisDrawer } from '@/components/features/portfolio/day-analysis-drawer';
 import { DailyPnL, PortfolioStats, EquityPoint } from '@/types/trading';
-import { DollarSign, Activity, Target, RefreshCw, CalendarIcon, MoreHorizontal, IndianRupeeIcon, Plus, Edit2, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, CalendarIcon, Plus, Edit2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useIsMobile } from "@/hooks/use-mobile"
 import { DateRange } from "react-day-picker"
 import {
-  addDays,
   format,
   subDays,
   startOfWeek,
@@ -25,12 +27,6 @@ import {
   startOfMonth,
   endOfMonth,
   subMonths,
-  startOfQuarter,
-  endOfQuarter,
-  subQuarters,
-  startOfYear,
-  endOfYear,
-  subYears
 } from "date-fns"
 
 import { cn } from "@/lib/utils/utils"
@@ -41,14 +37,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSession } from "next-auth/react"
 import { LoginScreen } from "@/components/auth/login-screen"
 import { LoadingLayer } from "@/components/layout/loading-layer"
-import { FormattedCurrency, FormattedPercentage } from '@/components/common/formatted-values'
 import { useSettings } from '@/hooks/use-settings'
-import { formatPercentage } from '@/lib/utils/format-settings'
 import { getCachedPortfolio, setCachedPortfolio, getSyncMetadata } from '@/lib/local-cache'
 import { scheduleSync, getSyncStatus } from '@/lib/sync-queue'
 import { SyncStatusIndicator } from '@/components/common/sync-status-indicator'
@@ -109,22 +102,13 @@ export default function Dashboard() {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<DailyPnL | null>(null);
   const [isCalendarDrawerOpen, setIsCalendarDrawerOpen] = useState(false);
 
+  // Optimistic update state
+  const [optimisticError, setOptimisticError] = useState<string | null>(null);
+  const [optimisticProgress, setOptimisticProgress] = useState(false);
+
   // Stop Loss Simulator state
   const [simulatorMonth, setSimulatorMonth] = useState('current');
   const [simulatorAmount, setSimulatorAmount] = useState(5000);
-
-  // System Health calculation
-  const getSystemHealth = (stats: PortfolioStats) => {
-    const profitFactorScore = stats.profitFactor >= 1.5 ? 2 : stats.profitFactor >= 1.0 ? 1 : 0;
-    const winRateScore = stats.winRate >= 50 ? 2 : stats.winRate >= 40 ? 1 : 0;
-    const drawdownScore = stats.maxDrawdown <= 10 ? 2 : stats.maxDrawdown <= 20 ? 1 : 0;
-    
-    const totalScore = profitFactorScore + winRateScore + drawdownScore;
-    
-    if (totalScore >= 5) return { status: 'Healthy', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
-    if (totalScore >= 3) return { status: 'Fragile', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
-    return { status: 'Broken', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' };
-  };
 
   // Stop Loss Simulator calculation
   const calculateSimulatedPnL = () => {
@@ -146,9 +130,6 @@ export default function Dashboard() {
     };
     return monthNames[simulatorMonth] || 'Current Month';
   };
-
-  const systemHealth = getSystemHealth(stats);
-  const maxAllowedDD = 30; // Max allowed drawdown percentage
 
   // Date range state
   const [date, setDate] = useState<DateRange | undefined>(undefined)
@@ -281,7 +262,8 @@ export default function Dashboard() {
       console.error('Error deleting entry:', error);
       // ROLLBACK: Restore original data
       setDailyPnL(originalDailyPnL);
-      alert('Failed to delete entry');
+      setOptimisticError('Failed to delete entry');
+      setTimeout(() => setOptimisticError(null), 5000);
     }
   };
 
@@ -350,7 +332,8 @@ export default function Dashboard() {
       console.error('Error updating cache:', error);
       // ROLLBACK: Revert to original on cache error
       setDailyPnL(prev => prev.map(t => t.id === id ? originalTransaction : t));
-      alert('Error saving changes - please try again');
+      setOptimisticError('Error saving changes - please try again');
+      setTimeout(() => setOptimisticError(null), 5000);
     }
   };
 
@@ -366,6 +349,8 @@ export default function Dashboard() {
     };
 
     try {
+      // Show progress indicator for large datasets (>5000 entries)
+      if (dailyPnL.length > 5000) setOptimisticProgress(true);
 
       // INSTANT UPDATE: Add to local state immediately
       const updatedDailyPnL = [...dailyPnL, newTransaction].sort((a, b) => 
@@ -405,7 +390,10 @@ export default function Dashboard() {
       console.error('Error adding transaction:', error);
       // ROLLBACK: Remove from state on error
       setDailyPnL(prev => prev.filter(t => t.id !== newTransaction.id));
-      alert('Error adding transaction - please try again');
+      setOptimisticError('Error adding transaction - please try again');
+      setTimeout(() => setOptimisticError(null), 5000);
+    } finally {
+      setOptimisticProgress(false);
     }
   };
 
@@ -473,6 +461,21 @@ export default function Dashboard() {
         }
       >
       <div className="flex flex-col space-y-5 p-4 md:p-6">
+        {/* Non-blocking optimistic update error indicator */}
+        {optimisticError && (
+          <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg bg-destructive/90 text-destructive-foreground text-sm shadow-lg animate-in slide-in-from-bottom-2 duration-200">
+            <span>{optimisticError}</span>
+            <button onClick={() => setOptimisticError(null)} className="ml-2 text-xs underline">Dismiss</button>
+          </div>
+        )}
+
+        {/* Progress indicator for large datasets */}
+        {optimisticProgress && (
+          <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg bg-card border border-border text-sm shadow-lg">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span>Processing...</span>
+          </div>
+        )}
         {/* Header Section with Actions */}
         <div className="flex flex-col space-y-3 md:flex-row md:items-start md:justify-between md:space-y-0">
           <div className="flex flex-col space-y-1">
@@ -590,77 +593,8 @@ export default function Dashboard() {
         <div className="grid gap-5 lg:grid-cols-3 xl:grid-cols-4">
           {/* Left Column - Metrics & Chart */}
           <div className="space-y-5 lg:col-span-2 xl:col-span-3">
-            {/* Hero Metrics - Trader Decision Row */}
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-              <Card className="border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl hover:shadow-xl transition-all duration-300 ease-out rounded-xl overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Total P&L</p>
-                      <div className={cn(
-                        "text-2xl md:text-3xl font-bold mb-0.5",
-                        stats.totalPnL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                      )}>
-                        {stats.totalPnL >= 0 ? '+' : ''}<FormattedCurrency value={Math.abs(stats.totalPnL)} short />
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        <FormattedPercentage value={stats.totalPnLPercentage} /> • since last reset
-                      </p>
-                    </div>
-                    <div className={cn(
-                      "h-10 w-10 rounded-lg flex items-center justify-center",
-                      stats.totalPnL >= 0 ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-rose-50 dark:bg-rose-500/10'
-                    )}>
-                      {stats.totalPnL >= 0 ? <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> : <TrendingDown className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl hover:shadow-xl transition-all duration-300 ease-out rounded-xl overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">System Health</p>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge className={cn("text-sm font-bold", systemHealth.color, systemHealth.bg)}>
-                          {systemHealth.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {systemHealth.status === 'Healthy' ? '✓ all systems green' : 
-                         systemHealth.status === 'Fragile' ? '⚠ needs attention' : '⚠ critical issues'}
-                      </p>
-                    </div>
-                    <div className={cn(
-                      "h-10 w-10 rounded-lg flex items-center justify-center",
-                      systemHealth.bg
-                    )}>
-                      <Activity className={cn("h-5 w-5", systemHealth.color)} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl hover:shadow-xl transition-all duration-300 ease-out rounded-xl overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Max Drawdown</p>
-                      <div className="text-2xl md:text-3xl font-bold mb-0.5 text-rose-600 dark:text-rose-400">
-                        <FormattedPercentage value={stats.maxDrawdown} decimals={1} />
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        vs {maxAllowedDD}% allowed • {stats.maxDrawdown <= maxAllowedDD ? '✓ safe' : '⚠ over limit'}
-                      </p>
-                    </div>
-                    <div className="h-10 w-10 rounded-lg bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center">
-                      <TrendingDown className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            {/* KPI Summary */}
+            <KPISummary stats={stats} />
 
             {/* Chart */}
             <EquityChart
@@ -669,12 +603,6 @@ export default function Dashboard() {
               allData={dailyPnL}
               dateRange={date && date.from && date.to ? { start: date.from, end: date.to } : { start: new Date(0), end: new Date() }}
               onDateRangeChange={() => { }}
-              showDrawdown={showDrawdown}
-              pnlViewMode={pnlViewMode}
-              equityViewMode={equityViewMode}
-              onShowDrawdownChange={setShowDrawdown}
-              onPnlViewModeChange={setPnlViewMode}
-              onEquityViewModeChange={setEquityViewMode}
               onCalendarDayClick={handleCalendarDayClick}
             />
 
@@ -689,139 +617,27 @@ export default function Dashboard() {
 
           {/* Right Column - Trader Cockpit Sidebar */}
           <div className="space-y-5 lg:col-span-1 xl:col-span-1">
-            {/* 1. RISK - Most critical for trader survival */}
-            <Card className="border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-xl rounded-xl overflow-hidden">
-              <CardHeader className="p-4 pb-3">
-                <CardTitle className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
-                  ⚠️ Risk Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 space-y-3">
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between p-2.5 bg-rose-50/50 dark:bg-rose-500/5 rounded-lg border border-rose-200/30">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Max Drawdown</span>
-                    <span className="text-sm font-bold text-rose-600 dark:text-rose-400">
-                      <FormattedPercentage value={stats.maxDrawdown} decimals={1} />
-                    </span>
-                  </div>
-                  
-                  {/* Progress bar for current DD vs allowed DD */}
-                  <div className="p-2.5 bg-gray-50/50 dark:bg-slate-800/50 rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Current DD / Allowed DD</span>
-                      <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
-                        {stats.maxDrawdown.toFixed(1)}% / {maxAllowedDD}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
-                      <div
-                        className={cn(
-                          "h-2 rounded-full transition-all duration-300",
-                          stats.maxDrawdown <= maxAllowedDD * 0.7 ? "bg-emerald-500" :
-                          stats.maxDrawdown <= maxAllowedDD ? "bg-amber-500" : "bg-rose-500"
-                        )}
-                        style={{ width: `${Math.min(100, (stats.maxDrawdown / maxAllowedDD) * 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
+            {/* AI Insights Section */}
+            <AIInsightsSection
+              buildSnapshot={(insightType: InsightType) => {
+                const drawdownSeries = equityData.map((p) => {
+                  const peak = Math.max(...equityData.slice(0, equityData.indexOf(p) + 1).map((e) => e.equity));
+                  return peak > 0 ? ((p.equity - peak) / peak) * 100 : 0;
+                });
+                return redactSnapshot({
+                  insightType,
+                  dateRange: { from: date?.from ?? new Date(0), to: date?.to ?? new Date() },
+                  dailyPnL: filteredDailyPnL,
+                  stats,
+                  drawdownSeries,
+                  currency: settings?.currency ?? 'INR',
+                  notes: filteredDailyPnL.filter((e) => e.notes).map((e) => e.notes!),
+                });
+              }}
+            />
 
-                  <div className="flex items-center justify-between p-2.5 bg-gray-50/50 dark:bg-slate-800/50 rounded-lg">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Risk of Ruin</span>
-                    <span className={cn("text-sm font-bold", 
-                      stats.maxDrawdown > 25 ? 'text-rose-600 dark:text-rose-400' : 
-                      stats.maxDrawdown > 15 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
-                    )}>
-                      {stats.maxDrawdown > 25 ? 'HIGH' : stats.maxDrawdown > 15 ? 'MED' : 'LOW'}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 2. EDGE - Is the system actually profitable? */}
-            <Card className="border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-xl rounded-xl overflow-hidden">
-              <CardHeader className="p-4 pb-3">
-                <CardTitle className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                  📈 Edge
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 space-y-3">
-                <div className="space-y-2.5">
-                  <div className={cn(
-                    "flex items-center justify-between p-2.5 rounded-lg border",
-                    stats.profitFactor < 1 ? 'bg-rose-50/50 dark:bg-rose-500/5 border-rose-200/30' : 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200/30'
-                  )}>
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Profit Factor</span>
-                    <span className={cn("text-sm font-bold", 
-                      stats.profitFactor < 1 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-                    )}>
-                      {stats.profitFactor ? (settings ? formatPercentage(stats.profitFactor, settings, { asDecimal: true, decimals: 2 }) : stats.profitFactor.toFixed(2)) : '∞'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-2.5 bg-gray-50/50 dark:bg-slate-800/50 rounded-lg">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Expectancy</span>
-                    <span className={cn("text-sm font-bold", stats.expectancy > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')}>
-                      {stats.expectancy >= 0 ? '+' : ''}<FormattedCurrency value={Math.abs(stats.expectancy)} short />
-                    </span>
-                  </div>
-
-                  <div className={cn(
-                    "flex items-center justify-between p-2.5 rounded-lg border",
-                    (Math.abs(stats.largestLoss) / stats.averageProfit) > 2 ? 'bg-rose-50/50 dark:bg-rose-500/5 border-rose-200/30' : 'bg-gray-50/50 dark:bg-slate-800/50'
-                  )}>
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Tail Risk Ratio</span>
-                    <span className={cn("text-sm font-bold", 
-                      (Math.abs(stats.largestLoss) / stats.averageProfit) > 2 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-                    )}>
-                      {stats.averageProfit > 0 ? (Math.abs(stats.largestLoss) / stats.averageProfit).toFixed(1) : '∞'}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 3. BEHAVIOR - Psychological execution */}
-            <Card className="border-gray-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-xl rounded-xl overflow-hidden">
-              <CardHeader className="p-4 pb-3">
-                <CardTitle className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                  🧠 Behavior
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 space-y-3">
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between p-2.5 bg-gray-50/50 dark:bg-slate-800/50 rounded-lg">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Current Streak</span>
-                    <span className={cn("text-sm font-bold", stats.currentStreak > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')}>
-                      {stats.currentStreak > 0 ? '+' : ''}{stats.currentStreak}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2.5 bg-gray-50/50 dark:bg-slate-800/50 rounded-lg">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Asymmetry Ratio</span>
-                    <span className={cn("text-sm font-bold", 
-                      (stats.averageProfit / Math.abs(stats.averageLoss)) > 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
-                    )}>
-                      {stats.averageLoss !== 0 ? (stats.averageProfit / Math.abs(stats.averageLoss)).toFixed(1) : '∞'}:1
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2.5 bg-emerald-50/50 dark:bg-emerald-500/5 rounded-lg border border-emerald-200/30">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Best Day</span>
-                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      +<FormattedCurrency value={stats.largestProfit} short />
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2.5 bg-rose-50/50 dark:bg-rose-500/5 rounded-lg border border-rose-200/30">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Worst Day</span>
-                    <span className="text-sm font-bold text-rose-600 dark:text-rose-400">
-                      -<FormattedCurrency value={Math.abs(stats.largestLoss)} short />
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Trader Cockpit - Tabbed Risk/Edge/Behavior */}
+            <TraderCockpit stats={stats} />
 
             {/* Fund History */}
             <FundHistory onFundUpdate={fetchData} dateRange={date} />

@@ -409,24 +409,24 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                         </TableCell>
                         <TableCell>
                           <div className={cn("font-bold text-sm", 
-                            week.damageEfficiency >= 2 ? 'text-emerald-600 dark:text-emerald-400' :
-                            week.damageEfficiency >= 1 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                            week.damageEfficiency >= 2 ? 'text-positive' :
+                            week.damageEfficiency >= 1 ? 'text-amber-600 dark:text-amber-400' : 'text-negative'
                           )}>
                             {week.damageEfficiency === 999 ? '∞' : week.damageEfficiency.toFixed(1)}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1 text-xs">
-                            <div className="text-emerald-600 dark:text-emerald-400">
+                            <div className="text-positive">
                               +<FormattedCurrency value={week.bestDay} short />
                             </div>
-                            <div className="text-red-600 dark:text-red-400">
+                            <div className="text-negative">
                               <FormattedCurrency value={week.worstDay} short />
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className={cn("flex items-center", week.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500')}>
+                          <div className={cn("flex items-center", week.totalPnL >= 0 ? 'text-positive' : 'text-negative')}>
                             <SimpleSparkline data={week.sparklineData} />
                           </div>
                         </TableCell>
@@ -468,10 +468,10 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1 text-xs">
-                            <div className="text-emerald-600 dark:text-emerald-400">
+                            <div className="text-positive">
                               Best: +<FormattedCurrency value={month.bestDay} short />
                             </div>
-                            <div className="text-red-600 dark:text-red-400">
+                            <div className="text-negative">
                               Worst: <FormattedCurrency value={month.worstDay} short />
                             </div>
                           </div>
@@ -499,8 +499,8 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                               {transaction.pnl >= 0 ? '+' : ''}<FormattedCurrency value={Math.abs(transaction.pnl)} />
                             </span>
                             {transaction.pnl >= 0 ? 
-                              <TrendingUp className="h-3 w-3 text-emerald-500" /> : 
-                              <TrendingDown className="h-3 w-3 text-red-500" />
+                              <TrendingUp className="h-3 w-3 text-positive" /> : 
+                              <TrendingDown className="h-3 w-3 text-negative" />
                             }
                           </div>
                         </TableCell>
@@ -594,7 +594,7 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => onDelete?.(transaction.id)}
-                                className="text-red-600 dark:text-red-400"
+                                className="text-destructive"
                               >
                                 <Trash2 className="mr-2 h-3 w-3" />
                                 Delete
@@ -637,8 +637,8 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                       <div>
                         <div className="text-xs text-gray-500 mb-1">Damage Efficiency</div>
                         <div className={cn("font-bold text-sm", 
-                          week.damageEfficiency >= 2 ? 'text-emerald-600 dark:text-emerald-400' :
-                          week.damageEfficiency >= 1 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                          week.damageEfficiency >= 2 ? 'text-positive' :
+                          week.damageEfficiency >= 1 ? 'text-amber-600 dark:text-amber-400' : 'text-negative'
                         )}>
                           {week.damageEfficiency === 999 ? '∞' : week.damageEfficiency.toFixed(1)}
                         </div>
@@ -646,10 +646,10 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                       <div>
                         <div className="text-xs text-gray-500 mb-1">Best/Worst</div>
                         <div className="space-y-0.5 text-xs">
-                          <div className="text-emerald-600 dark:text-emerald-400">
+                          <div className="text-positive">
                             +<FormattedCurrency value={week.bestDay} short />
                           </div>
-                          <div className="text-red-600 dark:text-red-400">
+                          <div className="text-negative">
                             <FormattedCurrency value={week.worstDay} short />
                           </div>
                         </div>
@@ -732,7 +732,7 @@ export function TraderTransactionTable({ transactions, onDelete, onEdit, onUpdat
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             onClick={() => onDelete?.(transaction.id)}
-                            className="text-red-600 dark:text-red-400"
+                            className="text-destructive"
                           >
                             <Trash2 className="mr-2 h-3 w-3" />
                             Delete

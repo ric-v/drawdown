@@ -6,6 +6,11 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils/utils"
+import {
+  ensureFocusWithinSurface,
+  handleFocusTrapKeyDown,
+  getFocusableElements,
+} from "@/lib/utils/focus-trap"
 
 const Sheet = SheetPrimitive.Root
 
@@ -56,22 +61,75 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-      {children}
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(({ side = "right", className, children, onOpenAutoFocus, onCloseAutoFocus, onKeyDown, ...props }, ref) => {
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+
+  const handleOpenAutoFocus = React.useCallback(
+    (event: Event) => {
+      // For empty surfaces (no focusable children besides the close button),
+      // focus the container itself to satisfy requirement 8.9
+      const container = contentRef.current;
+      if (container) {
+        const focusables = getFocusableElements(container);
+        if (focusables.length === 0) {
+          event.preventDefault();
+          ensureFocusWithinSurface(container);
+        }
+      }
+      onOpenAutoFocus?.(event);
+    },
+    [onOpenAutoFocus]
+  );
+
+  const handleCloseAutoFocus = React.useCallback(
+    (event: Event) => {
+      // Radix handles focus return to trigger by default.
+      // If the trigger is removed from DOM, focus falls to body.
+      onCloseAutoFocus?.(event);
+    },
+    [onCloseAutoFocus]
+  );
+
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      // For empty surfaces, trap Tab/Shift+Tab within the container
+      const container = contentRef.current;
+      if (container && event.key === 'Tab') {
+        const focusables = getFocusableElements(container);
+        if (focusables.length === 0) {
+          handleFocusTrapKeyDown(event, container);
+        }
+      }
+      onKeyDown?.(event);
+    },
+    [onKeyDown]
+  );
+
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        ref={(node) => {
+          contentRef.current = node;
+          if (typeof ref === 'function') ref(node);
+          else if (ref) ref.current = node;
+        }}
+        tabIndex={-1}
+        className={cn(sheetVariants({ side }), className)}
+        onOpenAutoFocus={handleOpenAutoFocus}
+        onCloseAutoFocus={handleCloseAutoFocus}
+        onKeyDown={handleKeyDown}
+        {...props}
+      >
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+        {children}
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  );
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({

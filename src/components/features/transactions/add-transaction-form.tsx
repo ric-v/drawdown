@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DailyPnL } from '@/types/trading';
 import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button"
@@ -20,16 +20,34 @@ import { Textarea } from "@/components/ui/textarea"
 interface AddTransactionFormProps {
   onAdd: (entry: Partial<DailyPnL>) => Promise<void>;
   trigger?: React.ReactNode;
+  defaultDate?: string; // ISO 8601 date string (YYYY-MM-DD)
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function AddTransactionForm({ onAdd, trigger }: AddTransactionFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function AddTransactionForm({ onAdd, trigger, defaultDate, open, onOpenChange }: AddTransactionFormProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : internalOpen;
+  const setIsOpen = (value: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: defaultDate || new Date().toISOString().split('T')[0],
     pnl: '',
     notes: '',
   });
+
+  useEffect(() => {
+    if (defaultDate) {
+      setFormData(prev => ({ ...prev, date: defaultDate }));
+    }
+  }, [defaultDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +86,7 @@ export function AddTransactionForm({ onAdd, trigger }: AddTransactionFormProps) 
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {trigger ? trigger : (
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button className="bg-positive hover:bg-positive/90 text-white">
             <Plus className="w-4 h-4 mr-2" />
             Add P&L
           </Button>
@@ -93,7 +111,7 @@ export function AddTransactionForm({ onAdd, trigger }: AddTransactionFormProps) 
               value={formData.date}
               onChange={handleChange}
               required
-              className="col-span-3 h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
+              className="col-span-3 h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-positive/30 transition-all duration-300"
             />
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
@@ -110,7 +128,7 @@ export function AddTransactionForm({ onAdd, trigger }: AddTransactionFormProps) 
                 value={formData.pnl}
                 onChange={handleChange}
                 required
-                className="h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
+                className="h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-positive/30 transition-all duration-300"
               />
               <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                 Positive for profit, negative for loss
@@ -127,14 +145,14 @@ export function AddTransactionForm({ onAdd, trigger }: AddTransactionFormProps) 
               placeholder="Any notes about the day..."
               value={formData.notes}
               onChange={handleChange}
-              className="col-span-3 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300 min-h-[100px]"
+              className="col-span-3 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-positive/30 transition-all duration-300 min-h-[100px]"
             />
           </div>
           <DialogFooter className="gap-3">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl h-11 font-medium border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all duration-300">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl h-11 font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-300 active:scale-95">
+            <Button type="submit" disabled={loading} className="bg-positive hover:bg-positive/90 text-white rounded-xl h-11 font-medium shadow-lg shadow-positive/30 hover:shadow-xl hover:shadow-positive/40 transition-all duration-300 active:scale-95">
               {loading ? 'Adding...' : 'Add P&L'}
             </Button>
           </DialogFooter>
