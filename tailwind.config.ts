@@ -54,6 +54,23 @@ const config: Config = {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				positive: 'hsl(var(--positive))',
+				negative: 'hsl(var(--negative))',
+				neutral: 'hsl(var(--neutral))',
+				gain: {
+					1: 'hsl(var(--gain-1))',
+					2: 'hsl(var(--gain-2))',
+					3: 'hsl(var(--gain-3))',
+					4: 'hsl(var(--gain-4))',
+					5: 'hsl(var(--gain-5))',
+				},
+				loss: {
+					1: 'hsl(var(--loss-1))',
+					2: 'hsl(var(--loss-2))',
+					3: 'hsl(var(--loss-3))',
+					4: 'hsl(var(--loss-4))',
+					5: 'hsl(var(--loss-5))',
+				},
 				success: {
 					DEFAULT: 'hsl(142, 76%, 36%)',
 					foreground: 'hsl(138, 76%, 97%)'

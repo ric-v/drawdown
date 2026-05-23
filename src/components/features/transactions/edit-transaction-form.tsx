@@ -99,7 +99,7 @@ export function EditTransactionForm({ entry, isOpen, onClose, onUpdate }: EditTr
               value={formData.date}
               onChange={handleChange}
               required
-              className="col-span-3 h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
+              className="col-span-3 h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-positive/30 transition-all duration-300"
             />
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
@@ -116,7 +116,7 @@ export function EditTransactionForm({ entry, isOpen, onClose, onUpdate }: EditTr
                 value={formData.pnl}
                 onChange={handleChange}
                 required
-                className="h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300"
+                className="h-11 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-positive/30 transition-all duration-300"
               />
               <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                 Positive for profit, negative for loss
@@ -133,14 +133,14 @@ export function EditTransactionForm({ entry, isOpen, onClose, onUpdate }: EditTr
               placeholder="Any notes about the day..."
               value={formData.notes}
               onChange={handleChange}
-              className="col-span-3 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-emerald-500/30 transition-all duration-300 min-h-[100px]"
+              className="col-span-3 rounded-xl border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm focus:ring-2 focus:ring-positive/30 transition-all duration-300 min-h-[100px]"
             />
           </div>
           <DialogFooter className="gap-3">
             <Button type="button" variant="outline" onClick={onClose} className="rounded-xl h-11 font-medium border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all duration-300">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl h-11 font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-300 active:scale-95">
+            <Button type="submit" disabled={loading} className="bg-positive hover:bg-positive/90 text-white rounded-xl h-11 font-medium shadow-lg shadow-positive/30 hover:shadow-xl hover:shadow-positive/40 transition-all duration-300 active:scale-95">
               {loading ? 'Updating...' : 'Update P&L'}
             </Button>
           </DialogFooter>

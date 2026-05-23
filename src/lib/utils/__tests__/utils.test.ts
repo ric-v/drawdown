@@ -46,16 +46,16 @@ describe('Utility Functions', () => {
   });
 
   describe('getColorClass', () => {
-    it('should return green class for positive values', () => {
-      expect(getColorClass(100)).toBe('text-emerald-600 dark:text-emerald-400');
+    it('should return positive class for positive values', () => {
+      expect(getColorClass(100)).toBe('text-positive');
     });
 
-    it('should return red class for negative values', () => {
-      expect(getColorClass(-100)).toBe('text-rose-600 dark:text-rose-400');
+    it('should return negative class for negative values', () => {
+      expect(getColorClass(-100)).toBe('text-negative');
     });
 
-    it('should return gray class for zero', () => {
-      expect(getColorClass(0)).toBe('text-gray-500 dark:text-gray-400');
+    it('should return neutral class for zero', () => {
+      expect(getColorClass(0)).toBe('text-neutral');
     });
   });
 });

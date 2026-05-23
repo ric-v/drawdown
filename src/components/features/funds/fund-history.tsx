@@ -170,11 +170,11 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
             <div className="grid grid-cols-2 gap-3 pb-3 border-b border-gray-200 dark:border-gray-800">
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Total Deposits</p>
-                <p className="text-sm font-semibold text-emerald-500">+{formatINR(totalDeposits)}</p>
+                <p className="text-sm font-semibold text-positive">+{formatINR(totalDeposits)}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Total Withdrawals</p>
-                <p className="text-sm font-semibold text-red-500">-{formatINR(totalWithdrawals)}</p>
+                <p className="text-sm font-semibold text-negative">-{formatINR(totalWithdrawals)}</p>
               </div>
             </div>
 
@@ -192,8 +192,8 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
                         <div className={cn(
                           "p-1.5 rounded-md",
                           transaction.type === 'DEPOSIT'
-                            ? "bg-emerald-500/10 text-emerald-500"
-                            : "bg-red-500/10 text-red-500"
+                            ? "bg-positive/10 text-positive"
+                            : "bg-negative/10 text-negative"
                         )}>
                           {transaction.type === 'DEPOSIT' ? (
                             <TrendingUp className="w-3 h-3" />
@@ -212,7 +212,7 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
                       </div>
                       <div className={cn(
                         "text-xs font-semibold",
-                        transaction.type === 'DEPOSIT' ? "text-emerald-500" : "text-red-500"
+                        transaction.type === 'DEPOSIT' ? "text-positive" : "text-negative"
                       )}>
                         {transaction.type === 'DEPOSIT' ? '+' : '-'}{formatINR(transaction.amount)}
                       </div>
@@ -239,11 +239,11 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
         <div className="grid grid-cols-2 gap-4 my-2 p-4 bg-muted/30 rounded-lg">
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-1">Total Deposits</p>
-            <p className="text-xl font-semibold text-emerald-500">+{formatINR(totalDeposits)}</p>
+            <p className="text-xl font-semibold text-positive">+{formatINR(totalDeposits)}</p>
           </div>
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-1">Total Withdrawals</p>
-            <p className="text-xl font-semibold text-red-500">-{formatINR(totalWithdrawals)}</p>
+            <p className="text-xl font-semibold text-negative">-{formatINR(totalWithdrawals)}</p>
           </div>
         </div>
 
@@ -277,7 +277,7 @@ export function FundHistory({ onFundUpdate, dateRange }: FundHistoryProps = {}) 
                   </TableCell>
                   <TableCell className={cn(
                     "text-right font-medium",
-                    transaction.type === 'DEPOSIT' ? 'text-emerald-500' : 'text-red-500'
+                    transaction.type === 'DEPOSIT' ? 'text-positive' : 'text-negative'
                   )}>
                     {transaction.type === 'DEPOSIT' ? '+' : '-'}{formatINR(transaction.amount)}
                   </TableCell>

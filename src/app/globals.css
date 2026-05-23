@@ -37,6 +37,25 @@
     --sidebar-accent-foreground: 222.2 47% 11%;
     --sidebar-border: 214 32% 88%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Semantic state tokens */
+    --positive: 152 76% 36%;
+    --negative: 0 72% 51%;
+    --neutral: 215 16% 47%;
+
+    /* Gain intensity scale (light mode) */
+    --gain-1: 152 60% 88%;
+    --gain-2: 152 60% 72%;
+    --gain-3: 152 70% 50%;
+    --gain-4: 152 76% 40%;
+    --gain-5: 152 76% 36%;
+
+    /* Loss intensity scale (light mode) */
+    --loss-1: 0 60% 88%;
+    --loss-2: 0 60% 72%;
+    --loss-3: 0 70% 55%;
+    --loss-4: 0 72% 46%;
+    --loss-5: 0 72% 40%;
   }
 
   .dark {
@@ -72,6 +91,25 @@
     --sidebar-accent-foreground: 213 31% 91%;
     --sidebar-border: 217.2 33% 17%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Semantic state tokens */
+    --positive: 152 76% 50%;
+    --negative: 0 63% 55%;
+    --neutral: 215 20% 65%;
+
+    /* Gain intensity scale (dark mode) */
+    --gain-1: 152 50% 15%;
+    --gain-2: 152 55% 25%;
+    --gain-3: 152 65% 35%;
+    --gain-4: 152 70% 42%;
+    --gain-5: 152 76% 50%;
+
+    /* Loss intensity scale (dark mode) */
+    --loss-1: 0 50% 15%;
+    --loss-2: 0 55% 25%;
+    --loss-3: 0 60% 35%;
+    --loss-4: 0 63% 42%;
+    --loss-5: 0 63% 50%;
   }
 }
 
@@ -208,4 +246,65 @@
 
 .duration-700 {
   animation-duration: 0.7s;
+}
+
+/* AI Insight Chat Markdown Styles */
+.ai-markdown {
+  @apply leading-relaxed text-foreground;
+}
+.ai-markdown h1,
+.ai-markdown h2,
+.ai-markdown h3 {
+  @apply font-semibold text-foreground mt-4 mb-2;
+}
+.ai-markdown h1 { @apply text-lg; }
+.ai-markdown h2 { @apply text-base; }
+.ai-markdown h3 { @apply text-sm font-semibold; }
+.ai-markdown p {
+  @apply mb-2 text-sm;
+}
+.ai-markdown ul,
+.ai-markdown ol {
+  @apply pl-5 mb-3 text-sm space-y-1;
+}
+.ai-markdown ul { @apply list-disc; }
+.ai-markdown ol { @apply list-decimal; }
+.ai-markdown li::marker {
+  @apply text-muted-foreground;
+}
+.ai-markdown strong {
+  @apply font-semibold text-foreground;
+}
+.ai-markdown table {
+  @apply w-full border-collapse text-xs my-3 rounded-lg overflow-hidden;
+}
+.ai-markdown thead {
+  @apply bg-muted;
+}
+.ai-markdown th {
+  @apply text-left font-medium text-muted-foreground px-3 py-2 border-b border-border;
+}
+.ai-markdown td {
+  @apply px-3 py-1.5 border-b border-border text-foreground;
+}
+.ai-markdown tbody tr:hover {
+  @apply bg-muted/50;
+}
+.ai-markdown code {
+  @apply bg-muted text-[13px] px-1.5 py-0.5 rounded font-mono;
+}
+.ai-markdown pre {
+  @apply bg-muted rounded-lg p-3 overflow-x-auto my-3;
+}
+.ai-markdown pre code {
+  @apply bg-transparent p-0;
+}
+.ai-markdown blockquote {
+  @apply border-l-2 border-primary/50 pl-3 italic text-muted-foreground my-2;
+}
+.ai-markdown hr {
+  @apply border-border my-4;
+}
+.ai-markdown a {
+  @apply text-primary underline underline-offset-2;
 }

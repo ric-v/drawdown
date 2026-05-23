@@ -3,6 +3,9 @@
  * TypeScript interfaces for user preferences and settings
  */
 
+import type { AIProvider, InsightCard } from '@/lib/ai/types';
+import type { EncryptedKey } from '@/lib/byok/crypto';
+
 export interface UserSettings {
   id: string;
   userId: string;
@@ -23,6 +26,20 @@ export interface UserSettings {
     showPnLPercentage: boolean;
     decimalsForPnL: number;
   };
+
+  /** AI configuration — additive optional fields for BYOK integration */
+  ai?: {
+    aiProvider?: AIProvider;
+    aiModel?: string;
+    apiKey?: EncryptedKey;
+    dailyRequestLimit?: number;
+    insights?: {
+      performanceSummary?: InsightCard[];
+      riskReview?: InsightCard[];
+      tradePatternAnalysis?: InsightCard[];
+    };
+  };
+
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +61,17 @@ export interface UpdateSettingsPayload {
     hideClosedTrades?: boolean;
     showPnLPercentage?: boolean;
     decimalsForPnL?: number;
+  };
+  ai?: {
+    aiProvider?: AIProvider;
+    aiModel?: string;
+    apiKey?: EncryptedKey;
+    dailyRequestLimit?: number;
+    insights?: {
+      performanceSummary?: InsightCard[];
+      riskReview?: InsightCard[];
+      tradePatternAnalysis?: InsightCard[];
+    };
   };
 }
 

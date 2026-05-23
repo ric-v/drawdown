@@ -73,7 +73,7 @@ export function DayAnalysisDrawer({ isOpen, onClose, dayData, selectedDate }: Da
             </SheetTitle>
             <div className={cn(
               "h-3 w-3 rounded-full",
-              isWinDay ? "bg-emerald-500" : isLossDay ? "bg-red-500" : "bg-gray-400"
+              isWinDay ? "bg-positive" : isLossDay ? "bg-negative" : "bg-gray-400"
             )} />
           </div>
           <SheetDescription>
@@ -86,8 +86,8 @@ export function DayAnalysisDrawer({ isOpen, onClose, dayData, selectedDate }: Da
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
-                {isWinDay ? <TrendingUp className="h-4 w-4 text-emerald-500" /> :
-                 isLossDay ? <TrendingDown className="h-4 w-4 text-red-500" /> :
+                {isWinDay ? <TrendingUp className="h-4 w-4 text-positive" /> :
+                 isLossDay ? <TrendingDown className="h-4 w-4 text-negative" /> :
                  <div className="h-4 w-4" />}
                 P&L Summary
               </CardTitle>
@@ -97,7 +97,7 @@ export function DayAnalysisDrawer({ isOpen, onClose, dayData, selectedDate }: Da
                 <div className="space-y-3">
                   <div className={cn(
                     "text-3xl font-bold",
-                    isWinDay ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    isWinDay ? "text-positive" : "text-negative"
                   )}>
                     {dayData.pnl >= 0 ? '+' : ''}<FormattedCurrency value={Math.abs(dayData.pnl)} />
                   </div>
@@ -105,8 +105,8 @@ export function DayAnalysisDrawer({ isOpen, onClose, dayData, selectedDate }: Da
                     <div>
                       <p className="text-muted-foreground">Status</p>
                       <div className="flex items-center gap-1 mt-1">
-                        {isWinDay ? <CheckCircle className="h-4 w-4 text-emerald-500" /> :
-                         <XCircle className="h-4 w-4 text-red-500" />}
+                        {isWinDay ? <CheckCircle className="h-4 w-4 text-positive" /> :
+                         <XCircle className="h-4 w-4 text-negative" />}
                         <span className="font-medium">
                           {isWinDay ? 'Win Day' : 'Loss Day'}
                         </span>
@@ -169,6 +169,7 @@ export function DayAnalysisDrawer({ isOpen, onClose, dayData, selectedDate }: Da
                 </div>
 
                 <div>
+                  {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
                   <label className="text-sm font-medium text-muted-foreground">
                     Trading Notes & Lessons
                   </label>

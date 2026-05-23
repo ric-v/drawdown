@@ -182,7 +182,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
                             {onDelete && (
                               <DropdownMenuItem
                                 onClick={() => onDelete(entry.id)}
-                                className="text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-950"
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete

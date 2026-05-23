@@ -7,6 +7,7 @@ import { Loader2, FileText, Calendar } from 'lucide-react';
 import Image from 'next/image';
 
 // Google Icon
+/* eslint-disable no-restricted-syntax -- brand logos require exact brand colors */
 const GoogleIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className}>
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -25,6 +26,7 @@ const MicrosoftIcon = ({ className }: { className?: string }) => (
     <path fill="#FFB900" d="M13 13h10v10H13z"/>
   </svg>
 );
+/* eslint-enable no-restricted-syntax */
 
 interface AccountFile {
   name: string;
@@ -154,7 +156,7 @@ export function AccountDetailsCard() {
           <CardTitle>Connected Account</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+          <div className="text-sm text-destructive">{error}</div>
         </CardContent>
       </Card>
     );
@@ -234,7 +236,7 @@ export function AccountDetailsCard() {
               {/* Portfolio File */}
               {accountInfo.files.portfolio && (
                 <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
-                  <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <FileText className="h-5 w-5 text-positive mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {accountInfo.files.portfolio.name}

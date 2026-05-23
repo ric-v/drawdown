@@ -61,7 +61,7 @@ export function EditEquityForm({ currentEquity, onEquityUpdated, trigger }: Edit
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {trigger ? trigger : (
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-emerald-500">
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-positive">
             <Edit2 className="w-4 h-4" />
           </Button>
         )}
@@ -92,7 +92,7 @@ export function EditEquityForm({ currentEquity, onEquityUpdated, trigger }: Edit
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl h-11 font-medium border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all duration-300">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl h-11 font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-300 active:scale-95">
+            <Button type="submit" disabled={loading} className="bg-positive hover:bg-positive/90 text-white rounded-xl h-11 font-medium shadow-lg shadow-positive/30 hover:shadow-xl hover:shadow-positive/40 transition-all duration-300 active:scale-95">
               {loading ? 'Updating...' : 'Update'}
             </Button>
           </DialogFooter>
